@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volvo 輿情資料瀏覽</title>
+<!--
+  資料來源：同資料夾的 data.js（由 03_程式碼/dashboard/build_data.py 產生）
+  每次跑爬蟲都會自動重建 data.js，重新整理這個網頁即可看到最新資料。
+  直接雙擊開啟即可，不需要伺服器。
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --grid: #e9e8e4;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --accent: #2a78d6;
+  --s1: #2a78d6;  /* 推 / 單一數列 */
+  --s2: #eb6834;  /* 噓 */
+  --s3: #1baf7a;  /* → */
+  --hover: rgba(0, 0, 0, .045);
+  --mark: #fde68a;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-2: #232322;
+    --border: #2e2e2c;
+    --grid: #2a2a28;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --text-3: #8f8e86;
+    --accent: #3987e5;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --hover: rgba(255, 255, 255, .06);
+    --mark: #6b5310;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+  --border: #2e2e2c;
+  --grid: #2a2a28;
+  --text: #f0efec;
+  --text-2: #c3c2b7;
+  --text-3: #8f8e86;
+  --accent: #3987e5;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --hover: rgba(255, 255, 255, .06);
+  --mark: #6b5310;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.55 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .01em; }
+.meta { color: var(--text-2); font-size: 13px; }
+.icon-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap;
+}
+.icon-btn:hover { color: var(--text); }
+
+.filters {
+  display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 16px; box-shadow: var(--shadow);
+}
+.filters label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-3); }
+.filters select, .filters input {
+  font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; min-width: 0;
+}
+.filters input[type=search] { width: 220px; }
+.filters .grow { flex: 1 1 200px; }
+.filters .grow input { width: 100%; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+.kpi .label { color: var(--text-2); font-size: 12px; }
+.kpi .value { font-size: 26px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi .value.small { font-size: 20px; line-height: 39px; }
+.kpi .sub { color: var(--text-3); font-size: 12px; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px 10px; box-shadow: var(--shadow); min-width: 0; }
+.card h2 { font-size: 15px; margin: 0; }
+.card .hint { color: var(--text-3); font-size: 12px; margin: 2px 0 8px; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--text-3); font-size: 11px; }
+.chart .band:hover, .chart .band.active { fill: var(--hover); }
+.chart .hrow { cursor: pointer; }
+.chart .hrow:hover .hbg, .chart .hrow.active .hbg { fill: var(--hover); }
+details.data { margin-top: 6px; font-size: 12px; color: var(--text-2); }
+details.data summary { cursor: pointer; color: var(--text-3); }
+details.data table { margin-top: 6px; }
+
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-3); font-weight: 500; font-size: 12px; }
+td.num, th.num { text-align: right; }
+
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.list-head select { font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; }
+.table-scroll { overflow-x: auto; }
+#articles td.title { min-width: 260px; }
+#articles tr.row { cursor: pointer; }
+#articles tr.row:hover td { background: var(--hover); }
+#articles tr.row.open td { background: var(--hover); }
+.date { color: var(--text-2); white-space: nowrap; }
+.board { color: var(--text-3); white-space: nowrap; }
+.detail td { background: var(--surface-2); padding: 14px 16px; }
+.detail .content { white-space: pre-wrap; word-break: break-word; max-height: 360px; overflow: auto; margin: 0 0 12px; }
+.detail .src { font-size: 12px; margin-bottom: 8px; color: var(--text-2); }
+.detail a { color: var(--accent); }
+.pushes { max-height: 360px; overflow: auto; border-top: 1px solid var(--border); padding-top: 8px; }
+.push { display: grid; grid-template-columns: 22px 120px 1fr auto; gap: 8px; padding: 2px 0; font-size: 13px; }
+.push .tag { font-weight: 600; color: var(--text-2); }
+.push .tag::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 2px; margin-right: 4px; vertical-align: 2px; background: var(--c); }
+.push .user { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.push .time { color: var(--text-3); font-size: 12px; white-space: nowrap; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.pager { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 12px; color: var(--text-2); font-size: 13px; }
+.pager button { font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+.pager button:disabled { opacity: .4; cursor: default; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 12px; color: var(--text-2); }
+.chip button { border: 0; background: none; color: var(--text-3); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; }
+.active-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.empty { color: var(--text-3); padding: 24px; text-align: center; }
+
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 10; display: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 120px;
+}
+#tooltip .t { font-weight: 600; margin-bottom: 4px; }
+#tooltip .r { display: flex; justify-content: space-between; gap: 14px; color: var(--text-2); }
+#tooltip .r b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+#tooltip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .filters input[type=search] { width: 100%; }
+  .filters label { flex: 1 1 45%; }
+  .push { grid-template-columns: 22px 1fr; }
+  .push .user, .push .time { display: none; }
+}
+</style>
+<script src="data.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Volvo 社群輿情資料瀏覽</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <button class="icon-btn" id="themeBtn" type="button">切換深淺色</button>
+  </header>
+
+  <section class="filters" aria-label="篩選條件">
+    <label>來源<select id="fSource"></select></label>
+    <label>看板<select id="fBoard"></select></label>
+    <label>起始月份<select id="fFrom"></select></label>
+    <label>結束月份<select id="fTo"></select></label>
+    <label>方面<select id="fAspect"></select></label>
+    <label>車款<select id="fModel"></select></label>
+    <label class="grow">關鍵字（標題、內文、推文）<input type="search" id="fQ" placeholder="例如：車機、待料、PA2"></label>
+    <button class="icon-btn" id="resetBtn" type="button">清除篩選</button>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>每月文章數</h2>
+      <div class="hint">依發文月份計算；點長條可篩選該月份</div>
+      <div class="chart" id="chMonthly"></div>
+      <details class="data"><summary>檢視數據</summary><div id="tbMonthly"></div></details>
+    </div>
+    <div class="card">
+      <h2>每月推文互動</h2>
+      <div class="hint">依推文時間計算的推／噓／→ 則數</div>
+      <div class="legend"><span><i style="background:var(--s1)"></i>推</span><span><i style="background:var(--s2)"></i>噓</span><span><i style="background:var(--s3)"></i>→</span></div>
+      <div class="chart" id="chPushes"></div>
+      <details class="data"><summary>檢視數據</summary><div id="tbPushes"></div></details>
+    </div>
+    <div class="card">
+      <h2>五大方面提及文章數</h2>
+      <div class="hint">標題或內文含該方面關鍵字的文章數；點長條可篩選</div>
+      <div class="chart" id="chAspects"></div>
+      <details class="data"><summary>檢視數據與關鍵字</summary><div id="tbAspects"></div></details>
+    </div>
+    <div class="card">
+      <h2>車款提及文章數</h2>
+      <div class="hint">標題或內文提到該車款的文章數；點長條可篩選</div>
+      <div class="chart" id="chModels"></div>
+      <details class="data"><summary>檢視數據</summary><div id="tbModels"></div></details>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="list-head">
+      <div>
+        <h2 id="listTitle">文章列表</h2>
+        <div class="active-filters" id="chips"></div>
+      </div>
+      <select id="sort" aria-label="排序">
+        <option value="new">最新發文</option>
+        <option value="old">最舊發文</option>
+        <option value="pushes">推文數最多</option>
+        <option value="boo">噓文最多</option>
+      </select>
+    </div>
+    <div class="table-scroll"><table id="articles"></table></div>
+    <div class="pager" id="pager"></div>
+  </section>
+</div>
+<div id="tooltip"></div>
+
+<script>
+// ===== 可自行調整的關鍵字字典 =====================================
+// 五大方面：依《論文實作行動指南》階段二的標註規範
+const ASPECTS = [
+  { name: "安全防護", kw: ["安全", "PA2", "Pilot Assist", "輔助駕駛", "ACC", "剛性", "車身", "撞", "煞車", "主動安全", "盲點"] },
+  { name: "智慧車載", kw: ["車機", "黑屏", "當機", "死機", "App", "Google", "Android", "導航", "OTA", "藍芽", "CarPlay", "螢幕"] },
+  { name: "動力續航", kw: ["動力", "電耗", "續航", "里程", "油耗", "加速", "馬力", "充電", "電池", "B5", "B6", "T8", "油電"] },
+  { name: "內裝空間", kw: ["內裝", "座椅", "空間", "後廂", "後座", "音響", "B&W", "Bowers", "質感", "隔音"] },
+  { name: "售後養護", kw: ["保養", "維修", "待料", "折舊", "原廠", "服務廠", "保固", "業務", "零件", "二手"] },
+];
+// 車款：用正規表示式比對，允許中間有空白（例如 XC 60）
+const MODELS = [
+  { name: "XC40", re: /XC\s?40/i },
+  { name: "XC60", re: /XC\s?60/i },
+  { name: "XC90", re: /XC\s?90/i },
+  { name: "EX30", re: /EX\s?30/i },
+  { name: "EX40", re: /EX\s?40/i },
+  { name: "EX90", re: /EX\s?90/i },
+  { name: "C40 / EC40", re: /(^|[^A-Za-z])E?C\s?40/i },
+  { name: "S60", re: /(^|[^A-Za-z])S\s?60/i },
+  { name: "S90", re: /(^|[^A-Za-z])S\s?90/i },
+  { name: "V60", re: /(^|[^A-Za-z])V\s?60/i },
+  { name: "V90", re: /(^|[^A-Za-z])V\s?90/i },
+];
+const SOURCE_NAMES = { ptt: "PTT", mobile01: "Mobile01", dcard: "Dcard" };
+const PAGE_SIZE = 30;
+// ==================================================================
+
+const DATA = window.DASHBOARD_DATA || { articles: [], crawl_files: [], generated_at: "" };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (n) => n.toLocaleString("zh-TW");
+
+// ---- 前處理：每篇文章算一次就好 ----
+const ARTICLES = DATA.articles.map((a) => {
+  const text = a.title + "\n" + a.content;
+  const lower = text.toLowerCase();
+  const pushText = a.pushes.map((p) => p[2]).join("\n");
+  const c = { "推": 0, "噓": 0, "→": 0 };
+  a.pushes.forEach((p) => { if (p[0] in c) c[p[0]]++; });
+  return {
+    ...a,
+    month: a.time.slice(0, 7),
+    lower,
+    search: (text + "\n" + pushText).toLowerCase(),
+    push: c["推"], boo: c["噓"], arrow: c["→"],
+    aspects: ASPECTS.map((asp, i) => asp.kw.some((k) => lower.includes(k.toLowerCase())) ? i : -1).filter((i) => i >= 0),
+    models: MODELS.map((m, i) => m.re.test(text) ? i : -1).filter((i) => i >= 0),
+  };
+});
+
+const state = { source: "", board: "", from: "", to: "", aspect: "", model: "", q: "", sort: "new", page: 1, open: new Set() };
+
+// ---- 篩選選單 ----
+function fillSelect(el, options, allLabel) {
+  el.innerHTML = `<option value="">${allLabel}</option>` + options.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
+}
+const uniq = (arr) => [...new Set(arr)].filter(Boolean).sort();
+const allMonths = monthRange(uniq(ARTICLES.map((a) => a.month)));
+fillSelect($("fSource"), uniq(ARTICLES.map((a) => a.source)).map((s) => [s, SOURCE_NAMES[s] || s]), "全部");
+fillSelect($("fBoard"), uniq(ARTICLES.map((a) => a.board)).map((b) => [b, b]), "全部");
+fillSelect($("fFrom"), allMonths.map((m) => [m, m]), "最早");
+fillSelect($("fTo"), allMonths.map((m) => [m, m]), "最新");
+fillSelect($("fAspect"), ASPECTS.map((a, i) => [String(i), a.name]), "全部");
+fillSelect($("fModel"), MODELS.map((m, i) => [String(i), m.name]), "全部");
+
+function monthRange(months) {
+  if (!months.length) return [];
+  const out = [];
+  let [y, m] = months[0].split("-").map(Number);
+  const [ey, em] = months[months.length - 1].split("-").map(Number);
+  while (y < ey || (y === ey && m <= em)) {
+    out.push(`${y}-${String(m).padStart(2, "0")}`);
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+function filtered(skip) {
+  const q = state.q.trim().toLowerCase();
+  return ARTICLES.filter((a) =>
+    (!state.source || a.source === state.source) &&
+    (!state.board || a.board === state.board) &&
+    (skip === "month" || !state.from || a.month >= state.from) &&
+    (skip === "month" || !state.to || a.month <= state.to) &&
+    (skip === "aspect" || state.aspect === "" || a.aspects.includes(+state.aspect)) &&
+    (skip === "model" || state.model === "" || a.models.includes(+state.model)) &&
+    (!q || a.search.includes(q))
+  );
+}
+
+// ---- 工具提示 ----
+const tip = $("tooltip");
+function showTip(e, html) {
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+
+// ---- 圖表：直立（可堆疊）長條 ----
+// 回傳能被 4 等分成整數刻度的上限，避免出現 1、1、1 這種重複刻度
+function niceMax(v) {
+  const raw = Math.max(1, v / 4);
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / p;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+  return step * 4;
+}
+function topRounded(x, yTop, w, h, r) {
+  r = Math.min(r, w / 2, h);
+  const b = yTop + h;
+  return `M${x},${b}V${yTop + r}Q${x},${yTop} ${x + r},${yTop}H${x + w - r}Q${x + w},${yTop} ${x + w},${yTop + r}V${b}Z`;
+}
+function columnChart(el, cats, series, activeCat, onClick) {
+  const W = el.clientWidth || 500, H = 220, ml = 40, mr = 6, mt = 10, mb = 26;
+  const pw = W - ml - mr, ph = H - mt - mb;
+  const totals = cats.map((c) => series.reduce((s, sr) => s + c.values[sr.key], 0));
+  const max = niceMax(Math.max(0, ...totals));
+  const band = pw / Math.max(cats.length, 1);
+  const bw = Math.max(2, Math.min(28, band * 0.68));
+  const y = (v) => mt + ph - (v / max) * ph;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  for (let i = 0; i <= 4; i++) {
+    const v = (max / 4) * i, yy = y(v);
+    svg += `<line x1="${ml}" x2="${W - mr}" y1="${yy}" y2="${yy}" stroke="var(--grid)" />`;
+    svg += `<text x="${ml - 6}" y="${yy + 4}" text-anchor="end">${fmt(Math.round(v))}</text>`;
+  }
+  const every = Math.max(1, Math.ceil(cats.length / Math.max(1, Math.floor(pw / 44))));
+  cats.forEach((c, i) => {
+    const x0 = ml + band * i, bx = x0 + (band - bw) / 2;
+    svg += `<rect class="band${c.key === activeCat ? " active" : ""}" data-i="${i}" x="${x0}" y="${mt}" width="${band}" height="${ph}" fill="transparent" style="cursor:pointer" />`;
+    let acc = 0;
+    const visible = series.filter((sr) => c.values[sr.key] > 0);
+    visible.forEach((sr, k) => {
+      const v = c.values[sr.key];
+      let bottom = y(acc), top = y(acc + v);
+      if (k > 0) bottom -= 2; // 段與段之間留 2px 間隙
+      const h = bottom - top;
+      if (h > 0.5) {
+        svg += k === visible.length - 1
+          ? `<path d="${topRounded(bx, top, bw, h, 4)}" fill="var(${sr.color})" pointer-events="none" />`
+          : `<rect x="${bx}" y="${top}" width="${bw}" height="${h}" fill="var(${sr.color})" pointer-events="none" />`;
+      }
+      acc += v;
+    });
+    if (i % every === 0) svg += `<text x="${x0 + band / 2}" y="${H - 8}" text-anchor="middle">${esc(c.short)}</text>`;
+  });
+  svg += `<line x1="${ml}" x2="${W - mr}" y1="${mt + ph}" y2="${mt + ph}" stroke="var(--text-3)" stroke-opacity=".5" /></svg>`;
+  el.innerHTML = svg;
+  el.querySelectorAll(".band").forEach((r) => {
+    const c = cats[+r.dataset.i];
+    r.addEventListener("mousemove", (e) => showTip(e,
+      `<div class="t">${esc(c.key)}</div>` + series.map((sr) =>
+        `<div class="r"><span>${series.length > 1 ? `<i style="background:var(${sr.color})"></i>` : ""}${esc(sr.name)}</span><b>${fmt(c.values[sr.key])}</b></div>`).join("")));
+    r.addEventListener("mouseleave", hideTip);
+    if (onClick) r.addEventListener("click", () => onClick(c.key));
+  });
+}
+
+// ---- 圖表：橫向長條 ----
+function barList(el, rows, activeIdx, onClick) {
+  const W = el.clientWidth || 500, rowH = 28, lw = 84, vw = 40, H = rows.length * rowH + 4;
+  const pw = W - lw - vw;
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  let svg = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  rows.forEach((r, i) => {
+    const yy = i * rowH, w = (r.value / max) * pw, bh = 14, by = yy + (rowH - bh) / 2;
+    svg += `<g class="hrow${String(i) === activeIdx ? " active" : ""}" data-i="${i}">`;
+    svg += `<rect class="hbg" x="0" y="${yy}" width="${W}" height="${rowH}" rx="6" fill="transparent" />`;
+    svg += `<text x="${lw - 10}" y="${yy + rowH / 2 + 4}" text-anchor="end" style="fill:var(--text-2);font-size:12px">${esc(r.label)}</text>`;
+    if (w > 0.5) {
+      const rr = Math.min(4, w / 2);
+      svg += `<path d="M${lw},${by}H${lw + w - rr}Q${lw + w},${by} ${lw + w},${by + rr}V${by + bh - rr}Q${lw + w},${by + bh} ${lw + w - rr},${by + bh}H${lw}Z" fill="var(--s1)" />`;
+    }
+    svg += `<text x="${lw + w + 6}" y="${yy + rowH / 2 + 4}" style="fill:var(--text);font-size:12px">${fmt(r.value)}</text></g>`;
+  });
+  el.innerHTML = svg + "</svg>";
+  el.querySelectorAll(".hrow").forEach((g) => {
+    const r = rows[+g.dataset.i];
+    g.addEventListener("mousemove", (e) => showTip(e, `<div class="t">${esc(r.label)}</div>` + r.tip.map(([k, v]) => `<div class="r"><span>${k}</span><b>${fmt(v)}</b></div>`).join("")));
+    g.addEventListener("mouseleave", hideTip);
+    g.addEventListener("click", () => onClick(g.dataset.i));
+  });
+}
+
+function dataTable(head, rows) {
+  return `<table><tr>${head.map((h, i) => `<th class="${i ? "num" : ""}">${h}</th>`).join("")}</tr>` +
+    rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? "num" : ""}">${typeof c === "number" ? fmt(c) : esc(c)}</td>`).join("")}</tr>`).join("") + "</table>";
+}
+
+// ---- 繪製 ----
+function renderCharts() {
+  // 每月文章數（不受月份篩選影響，才能看到全貌並點選）
+  const baseMonth = filtered("month");
+  const months = monthRange(uniq(baseMonth.map((a) => a.month)));
+  const byMonth = Object.fromEntries(months.map((m) => [m, 0]));
+  baseMonth.forEach((a) => { if (a.month in byMonth) byMonth[a.month]++; });
+  const activeMonth = state.from && state.from === state.to ? state.from : null;
+  const short = (m) => m.slice(2).replace("-", "/");
+  columnChart($("chMonthly"), months.map((m) => ({ key: m, short: short(m), values: { n: byMonth[m] } })),
+    [{ key: "n", name: "文章數", color: "--s1" }], activeMonth, (m) => {
+      if (activeMonth === m) { state.from = state.to = ""; } else { state.from = state.to = m; }
+      update();
+    });
+  $("tbMonthly").innerHTML = dataTable(["月份", "文章數"], months.map((m) => [m, byMonth[m]]));
+
+  // 每月推文互動（依推文時間）
+  const list = filtered();
+  const pm = {};
+  list.forEach((a) => a.pushes.forEach((p) => {
+    const m = String(p[3]).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(m)) return;
+    if (state.from && m < state.from) return;
+    if (state.to && m > state.to) return;
+    pm[m] = pm[m] || { "推": 0, "噓": 0, "→": 0 };
+    if (p[0] in pm[m]) pm[m][p[0]]++;
+  }));
+  const pMonths = monthRange(Object.keys(pm).sort());
+  const pSeries = [{ key: "推", name: "推", color: "--s1" }, { key: "噓", name: "噓", color: "--s2" }, { key: "→", name: "→", color: "--s3" }];
+  columnChart($("chPushes"), pMonths.map((m) => ({ key: m, short: short(m), values: pm[m] || { "推": 0, "噓": 0, "→": 0 } })), pSeries, null, null);
+  $("tbPushes").innerHTML = dataTable(["月份", "推", "噓", "→"], pMonths.map((m) => { const v = pm[m] || {}; return [m, v["推"] || 0, v["噓"] || 0, v["→"] || 0]; }));
+
+  // 五大方面
+  const baseAsp = filtered("aspect");
+  const aspRows = ASPECTS.map((asp, i) => {
+    const arts = baseAsp.filter((a) => a.aspects.includes(i));
+    const kws = asp.kw.map((k) => k.toLowerCase());
+    const pushHits = baseAsp.reduce((s, a) => s + a.pushes.filter((p) => kws.some((k) => p[2].toLowerCase().includes(k))).length, 0);
+    return { label: asp.name, value: arts.length, pushHits, tip: [["提及文章數", arts.length], ["提及推文數", pushHits]] };
+  });
+  barList($("chAspects"), aspRows, state.aspect, (i) => { state.aspect = state.aspect === i ? "" : i; update(); });
+  $("tbAspects").innerHTML = dataTable(["方面", "提及文章", "提及推文"], aspRows.map((r) => [r.label, r.value, r.pushHits])) +
+    `<p style="margin:8px 0 0">關鍵字（可在 index.html 開頭的 ASPECTS 調整）：</p>` +
+    ASPECTS.map((a) => `<div><b>${esc(a.name)}</b>：${a.kw.map(esc).join("、")}</div>`).join("");
+
+  // 車款
+  const baseModel = filtered("model");
+  const modelRows = MODELS.map((m, i) => {
+    const n = baseModel.filter((a) => a.models.includes(i)).length;
+    return { label: m.name, value: n, tip: [["提及文章數", n]] };
+  });
+  barList($("chModels"), modelRows, state.model, (i) => { state.model = state.model === i ? "" : i; update(); });
+  $("tbModels").innerHTML = dataTable(["車款", "提及文章"], modelRows.map((r) => [r.label, r.value]));
+}
+
+function renderKpis(list) {
+  const push = list.reduce((s, a) => s + a.push, 0), boo = list.reduce((s, a) => s + a.boo, 0), arrow = list.reduce((s, a) => s + a.arrow, 0);
+  const times = list.map((a) => a.time).filter(Boolean).sort();
+  const ratio = push + boo ? Math.round((push / (push + boo)) * 100) : 0;
+  $("kpis").innerHTML = [
+    ["文章數", fmt(list.length), `共 ${fmt(ARTICLES.length)} 篇`],
+    ["推文總數", fmt(push + boo + arrow), `推 ${fmt(push)}・噓 ${fmt(boo)}・→ ${fmt(arrow)}`],
+    ["推文正向比", push + boo ? ratio + "%" : "—", "推 ÷（推＋噓）"],
+    ["發文期間", times.length ? times[0].slice(0, 7).replace("-", "/") + " – " + times[times.length - 1].slice(0, 7).replace("-", "/") : "—", times.length ? `跨 ${monthRange([times[0].slice(0, 7), times[times.length - 1].slice(0, 7)]).length} 個月` : ""],
+  ].map(([l, v, s]) => `<div class="kpi"><div class="label">${l}</div><div class="value${String(v).length > 8 ? " small" : ""}">${v}</div><div class="sub">${s}</div></div>`).join("");
+}
+
+function highlight(text) {
+  const q = state.q.trim();
+  const safe = esc(text);
+  if (!q) return safe;
+  const re = new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  return safe.replace(re, (m) => `<mark>${m}</mark>`);
+}
+
+function renderList(list) {
+  const sorters = {
+    new: (a, b) => b.time.localeCompare(a.time),
+    old: (a, b) => a.time.localeCompare(b.time),
+    pushes: (a, b) => b.pushes.length - a.pushes.length,
+    boo: (a, b) => b.boo - a.boo,
+  };
+  const sorted = [...list].sort(sorters[state.sort]);
+  const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  state.page = Math.min(state.page, pages);
+  const rows = sorted.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+  $("listTitle").textContent = `文章列表（${fmt(sorted.length)} 篇）`;
+
+  if (!rows.length) {
+    $("articles").innerHTML = `<tr><td class="empty">${ARTICLES.length ? "沒有符合篩選條件的文章" : "尚無資料：請先執行爬蟲，產生 data.js"}</td></tr>`;
+    $("pager").innerHTML = "";
+    return;
+  }
+  let html = `<tr><th>發文日期</th><th>看板</th><th>標題</th><th class="num">推</th><th class="num">噓</th><th class="num">→</th></tr>`;
+  rows.forEach((a) => {
+    const key = a.source + ":" + a.id, open = state.open.has(key);
+    html += `<tr class="row${open ? " open" : ""}" data-key="${esc(key)}"><td class="date">${esc(a.time.slice(0, 10))}</td><td class="board">${esc((SOURCE_NAMES[a.source] || a.source) + " " + a.board)}</td><td class="title">${highlight(a.title)}</td><td class="num">${fmt(a.push)}</td><td class="num">${fmt(a.boo)}</td><td class="num">${fmt(a.arrow)}</td></tr>`;
+    if (open) {
+      const colors = { "推": "var(--s1)", "噓": "var(--s2)", "→": "var(--s3)" };
+      html += `<tr class="detail"><td colspan="6">
+        <div class="src">作者 ${esc(a.author)}・${esc(a.time)}${a.url ? `・<a href="${esc(a.url)}" target="_blank" rel="noopener">開啟原文 ↗</a>` : ""}</div>
+        <div class="content">${highlight(a.content)}</div>
+        <div class="pushes">${a.pushes.length ? a.pushes.map((p) => `<div class="push"><span class="tag" style="--c:${colors[p[0]] || "var(--text-3)"}">${esc(p[0])}</span><span class="user">${esc(p[1])}</span><span>${highlight(p[2])}</span><span class="time">${esc(String(p[3]).slice(5))}</span></div>`).join("") : '<div class="empty">沒有推文</div>'}</div>
+      </td></tr>`;
+    }
+  });
+  $("articles").innerHTML = html;
+  $("articles").querySelectorAll("tr.row").forEach((tr) => tr.addEventListener("click", () => {
+    const k = tr.dataset.key;
+    state.open.has(k) ? state.open.delete(k) : state.open.add(k);
+    renderList(filtered());
+  }));
+  $("pager").innerHTML = pages > 1
+    ? `<button id="prev" ${state.page === 1 ? "disabled" : ""}>上一頁</button><span>${state.page} / ${pages}</span><button id="next" ${state.page === pages ? "disabled" : ""}>下一頁</button>`
+    : "";
+  if (pages > 1) {
+    $("prev").onclick = () => { state.page--; renderList(filtered()); };
+    $("next").onclick = () => { state.page++; renderList(filtered()); };
+  }
+}
+
+function renderChips() {
+  const chips = [];
+  if (state.from || state.to) chips.push(["month", state.from === state.to ? state.from : `${state.from || "最早"} – ${state.to || "最新"}`]);
+  if (state.aspect !== "") chips.push(["aspect", ASPECTS[+state.aspect].name]);
+  if (state.model !== "") chips.push(["model", MODELS[+state.model].name]);
+  if (state.q) chips.push(["q", `「${state.q}」`]);
+  $("chips").innerHTML = chips.map(([k, t]) => `<span class="chip">${esc(t)}<button data-k="${k}" aria-label="移除">×</button></span>`).join("");
+  $("chips").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    const k = b.dataset.k;
+    if (k === "month") state.from = state.to = "";
+    else state[k] = "";
+    update();
+  });
+}
+
+function syncControls() {
+  $("fSource").value = state.source; $("fBoard").value = state.board;
+  $("fFrom").value = state.from; $("fTo").value = state.to;
+  $("fAspect").value = state.aspect; $("fModel").value = state.model;
+  if ($("fQ").value !== state.q) $("fQ").value = state.q;
+  $("sort").value = state.sort;
+}
+
+function update(keepPage) {
+  if (!keepPage) state.page = 1;
+  hideTip();
+  syncControls();
+  const list = filtered();
+  renderKpis(list);
+  renderCharts();
+  renderChips();
+  renderList(list);
+}
+
+// ---- 事件 ----
+[["fSource", "source"], ["fBoard", "board"], ["fFrom", "from"], ["fTo", "to"], ["fAspect", "aspect"], ["fModel", "model"], ["sort", "sort"]]
+  .forEach(([id, k]) => $(id).addEventListener("change", (e) => { state[k] = e.target.value; update(); }));
+let qTimer;
+$("fQ").addEventListener("input", (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.q = e.target.value; update(); }, 200); });
+$("resetBtn").onclick = () => { Object.assign(state, { source: "", board: "", from: "", to: "", aspect: "", model: "", q: "" }); update(); };
+let rTimer;
+addEventListener("resize", () => { clearTimeout(rTimer); rTimer = setTimeout(renderCharts, 150); });
+
+$("themeBtn").onclick = () => {
+  const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+  const next = dark ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+  renderCharts();
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+$("meta").textContent = DATA.generated_at
+  ? `資料更新：${DATA.generated_at}・來自 ${DATA.crawl_files.length} 個爬取檔・${fmt(ARTICLES.length)} 篇不重複文章` +
+    (DATA.anonymized ? "・使用者帳號已匿名化" : "")
+  : "尚未產生資料：請先執行爬蟲（會自動建立 data.js）";
+
+update();
+</script>
+</body>
+</html>
