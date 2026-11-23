@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 試標檢查</title>
+<!--
+  AI 試標檢查頁：逐則確認 Claude 對 100 則例句的標註
+  標註來自 04_資料/labels/ai_pilot_v1.json，經 build_discussion.py 併入 discussion_data.js
+  檢查結果只存在這台裝置的瀏覽器，按「複製結果」貼回對話，或「下載 CSV」
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface: #fcfcfb; --surface-2: #f0efec; --border: #e2e1dc; --grid: #e9e8e4;
+  --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974;
+  --accent: #2a78d6; --accent-soft: #e3eefb;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --ok: #1baf7a; --ok-soft: #e1f5ec; --warn: #eb6834; --warn-soft: #fdeee6;
+  --mark: #fde68a; --shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+    --accent: #3987e5; --accent-soft: #1d2f45;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --ok: #199e70; --ok-soft: #15302a; --warn: #d95926; --warn-soft: #3a2218;
+    --mark: #6b5310; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+  --accent: #3987e5; --accent-soft: #1d2f45;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --ok: #199e70; --ok-soft: #15302a; --warn: #d95926; --warn-soft: #3a2218;
+  --mark: #6b5310; --shadow: none;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.7 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+.wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; }
+a { color: var(--accent); }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.eyebrow { font-size: 13px; color: var(--text-3); }
+h1 { font-size: 26px; line-height: 1.35; margin: 2px 0 6px; }
+.meta { color: var(--text-2); font-size: 13px; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px;
+  white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+}
+.btn:hover { color: var(--text); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+.callout { background: var(--accent-soft); border-radius: 12px; padding: 14px 18px; font-size: 14px; }
+.callout ol { margin: 6px 0 0; padding-left: 20px; }
+.callout p { margin: 0; }
+h2 { font-size: 18px; margin: 28px 0 10px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi .label { color: var(--text-2); font-size: 12px; }
+.kpi .value { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi .sub { color: var(--text-3); font-size: 12px; line-height: 1.5; }
+.note { font-size: 13px; color: var(--text-3); margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-3); font-weight: 500; font-size: 12px; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-scroll { overflow-x: auto; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 12px; }
+.tabs { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; }
+.tabs button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--text-2); padding: 4px 12px; border-radius: 7px; cursor: pointer; }
+.tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+.progress { font-size: 13px; color: var(--text-2); }
+.bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 4px; width: 160px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+.list { display: grid; gap: 12px; }
+.item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+.item.agree { border-color: var(--ok); }
+.item.changed { border-color: var(--warn); }
+.head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--text-3); }
+.no { font-weight: 600; color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+.badge { border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; font-size: 12px; color: var(--text-2); background: var(--surface-2); }
+.status { margin-left: auto; font-size: 12px; font-weight: 600; }
+.status.agree { color: var(--ok); }
+.status.changed { color: var(--warn); }
+.tag { font-weight: 600; color: var(--text-2); font-size: 13px; flex-shrink: 0; white-space: nowrap; }
+.tag::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; vertical-align: 1px; background: var(--c); }
+.ctx { font-size: 13px; color: var(--text-2); border-left: 2px solid var(--border); padding: 2px 0 2px 10px; margin: 8px 0; }
+.ctx-title { color: var(--text-3); margin-bottom: 2px; }
+.ctx-line { display: flex; gap: 6px; }
+.ctx-line.self { color: var(--text); font-size: 17px; font-weight: 600; margin: 2px 0; }
+.ctx-line.self .tag { font-size: 15px; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+
+.ai { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.ai-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ai-label { font-size: 12px; color: var(--text-3); margin-right: 2px; }
+.chip { border-radius: 6px; padding: 0 8px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+.chip.main { font-weight: 600; }
+.conf { font-size: 12px; color: var(--text-3); }
+.conf.low { color: var(--warn); font-weight: 600; }
+.reason { color: var(--text-2); margin-top: 4px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.actions .btn { font-size: 14px; padding: 6px 14px; }
+.btn.ok.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btn.edit.on { background: var(--warn); border-color: var(--warn); color: #fff; }
+.editor { margin-top: 10px; display: none; gap: 8px; }
+.editor.open { display: grid; }
+.field { display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: start; }
+.field > span { font-size: 13px; color: var(--text-3); padding-top: 4px; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opts button {
+  font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); border-radius: 999px; padding: 3px 12px; cursor: pointer;
+}
+.opts button.ai-pick { border-style: dashed; border-color: var(--text-3); }
+.opts button.on { background: var(--warn); border-color: var(--warn); color: #fff; }
+.opts button.on.same { background: var(--accent); border-color: var(--accent); }
+.field input {
+  font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; width: 100%; min-width: 0;
+}
+.hint { font-size: 12px; color: var(--text-3); }
+
+.export { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+textarea#out {
+  width: 100%; min-height: 140px; margin-top: 10px; font: 12px/1.5 ui-monospace, Consolas, monospace;
+  color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: none;
+}
+footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); padding-top: 12px; }
+
+@media (max-width: 760px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  header { flex-direction: column; }
+  .top-actions { justify-content: flex-start; }
+  h1 { font-size: 22px; }
+  .field { grid-template-columns: 1fr; gap: 4px; }
+  .field > span { padding-top: 0; }
+}
+</style>
+<script src="discussion_data.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">標註試做</div>
+      <h1>AI 試標檢查：100 則例句</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="top-actions">
+      <a class="btn" href="discussion.html">← 會議討論頁</a>
+      <button class="btn" id="themeBtn" type="button">切換深淺色</button>
+    </div>
+  </header>
+
+  <div class="callout">
+    <p><b>怎麼用</b>：AI（Claude）已先標好每一則，請逐則確認。</p>
+    <ol>
+      <li>看推文與上下文，再看 AI 的判斷和理由</li>
+      <li>同意就按 <b>✓ 同意</b>；不同意按 <b>✎ 修改</b>，點選正確的選項（虛線框是 AI 原本的選擇），可加備註</li>
+      <li>全部看完後到最下方按 <b>複製結果</b>，貼回對話給 Claude</li>
+    </ol>
+    <p class="note" style="margin-top:8px">進度會自動存在這台裝置的瀏覽器，關掉再開不會不見；換裝置則要重來。</p>
+  </div>
+
+  <h2>目前結果</h2>
+  <div class="kpis" id="kpis"></div>
+  <div class="card" style="margin-top:12px">
+    <div class="table-scroll"><table id="agreeTable"></table></div>
+    <p class="note" id="agreeNote"></p>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="filterTabs" role="tablist" aria-label="篩選">
+      <button type="button" data-f="all" class="on">全部</button>
+      <button type="button" data-f="todo">未檢查</button>
+      <button type="button" data-f="changed">有修改</button>
+      <button type="button" data-f="irony">反諷候選</button>
+      <button type="button" data-f="neutral">中庸候選</button>
+      <button type="button" data-f="low">AI 沒把握</button>
+    </div>
+    <div class="progress"><span id="progText"></span><div class="bar"><i id="progBar"></i></div></div>
+  </div>
+  <div class="list" id="list"></div>
+
+  <h2>送出結果</h2>
+  <div class="card">
+    <div class="export">
+      <button class="btn primary" id="copyBtn" type="button">複製結果</button>
+      <button class="btn" id="csvBtn" type="button">下載 CSV</button>
+      <span class="hint" id="copyHint">複製後直接貼到對話裡即可，不需要下載檔案。</span>
+    </div>
+    <textarea id="out" readonly aria-label="檢查結果文字"></textarea>
+    <p class="note">需要重新來過：<button class="btn" id="resetBtn" type="button">清除這台裝置上的檢查結果</button></p>
+  </div>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+const D = window.DISCUSSION_DATA || { candidates: [], ai_meta: {} };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const TAG_COLOR = { "推": "var(--s1)", "噓": "var(--s2)", "→": "var(--s3)" };
+const STORE_KEY = "review-ai-pilot-v1";
+const SCHEMA = (D.ai_meta && D.ai_meta.schema) || {};
+const FIELDS = [["type", "類型"], ["attitude", "真正態度"], ["target", "評價對象"], ["aspect", "方面"]];
+
+const items = D.candidates.filter((c) => c.ai).map((c, i) => ({ ...c, no: i + 1 }));
+
+let rv = {};
+try { rv = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (e) {}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(rv)); } catch (e) {} }
+
+// 每則的狀態：agree（全部同意）/ changed（至少改一個欄位）/ 未檢查
+function final(c) { const r = rv[c.id] || {}; return Object.fromEntries(FIELDS.map(([k]) => [k, (r.fix && r.fix[k]) || c.ai[k]])); }
+function status(c) {
+  const r = rv[c.id];
+  if (!r || !r.status) return "";
+  if (r.status === "edit") return FIELDS.some(([k]) => final(c)[k] !== c.ai[k]) ? "changed" : "agree";
+  return "agree";
+}
+
+$("meta").textContent = `${items.length} 則（反諷候選 ${items.filter((c) => c.kind === "irony").length}、中庸候選 ${items.filter((c) => c.kind === "neutral").length}）・AI 標註：${D.ai_meta.labeler || ""}・${D.ai_meta.labeled_at || ""}`;
+$("footer").textContent = "例句由關鍵字規則篩出，AI 標註為試做，正式研究的 LLM 實驗會另以固定版本的模型與提示詞重跑。資料來源：PTT 公開看板；使用者帳號、IP 位址與原文連結均已隱藏。";
+
+function markHits(text, hits) {
+  let out = esc(text);
+  [...new Set(hits || [])].sort((a, b) => b.length - a.length).forEach((h) => {
+    const e = esc(h).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(e, "g"), (m) => `<mark>${m}</mark>`);
+  });
+  return out;
+}
+const tagHtml = (t) => `<span class="tag" style="--c:${TAG_COLOR[t] || "var(--text-3)"}">${esc(t)}</span>`;
+
+// ---- 結果摘要 ----
+function summary() {
+  const done = items.filter((c) => status(c));
+  const changed = done.filter((c) => status(c) === "changed");
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
+  const isType = (c, kind) => final(c).type === (kind === "irony" ? "反諷" : "中庸");
+  const groups = [["irony", "反諷候選"], ["neutral", "中庸候選"]];
+
+  $("kpis").innerHTML = [
+    ["已檢查", `${done.length} / ${items.length}`, `有修改 ${changed.length} 則`],
+    ["類型與 AI 一致", pct(done.filter((c) => final(c).type === c.ai.type).length, done.length), "只算已檢查的"],
+    ["規則抓的反諷，真的是反諷", (() => { const g = items.filter((c) => c.kind === "irony"); const dn = g.filter((c) => status(c)); return dn.length ? pct(dn.filter((c) => isType(c, "irony")).length, dn.length) : pct(g.filter((c) => c.ai.type === "反諷").length, g.length) + "＊"; })(), "＊尚未檢查時顯示 AI 的判斷"],
+    ["規則抓的中庸，真的是中庸", (() => { const g = items.filter((c) => c.kind === "neutral"); const dn = g.filter((c) => status(c)); return dn.length ? pct(dn.filter((c) => isType(c, "neutral")).length, dn.length) : pct(g.filter((c) => c.ai.type === "中庸").length, g.length) + "＊"; })(), "＊尚未檢查時顯示 AI 的判斷"],
+  ].map(([l, v, s]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`).join("");
+
+  const rows = FIELDS.map(([k, name]) => {
+    const cells = [done, ...groups.map(([g]) => done.filter((c) => c.kind === g))].map((list) => {
+      const same = list.filter((c) => final(c)[k] === c.ai[k]).length;
+      return `<td class="n">${pct(same, list.length)}${list.length ? `<span class="hint">（${same}/${list.length}）</span>` : ""}</td>`;
+    });
+    return `<tr><td>${name}</td>${cells.join("")}</tr>`;
+  });
+  $("agreeTable").innerHTML = `<tr><th>你和 AI 一致的比例</th><th>全部</th><th>反諷候選</th><th>中庸候選</th></tr>${rows.join("")}`;
+  $("agreeNote").textContent = done.length ? "明天會議可以報告：AI 在哪一類最常判錯，以及關鍵字規則的準確度。" : "開始檢查後，這裡會即時算出你和 AI 的一致率。";
+
+  $("progText").textContent = `已檢查 ${done.length} / ${items.length} 則`;
+  $("progBar").style.width = (done.length / items.length) * 100 + "%";
+}
+
+// ---- 列表 ----
+let filter = "all";
+function visible() {
+  return items.filter((c) => ({
+    all: true, todo: !status(c), changed: status(c) === "changed",
+    irony: c.kind === "irony", neutral: c.kind === "neutral", low: c.ai.confidence === "低",
+  }[filter]));
+}
+
+function itemHtml(c) {
+  const r = rv[c.id] || {}, st = status(c), f = final(c);
+  const ctx = c.before.map(([t, x]) => `<div class="ctx-line">${tagHtml(t)}<span>${esc(x)}</span></div>`).join("") +
+    `<div class="ctx-line self">${tagHtml(c.tag)}<span>${markHits(c.text, c.hits)}</span></div>` +
+    c.after.map(([t, x]) => `<div class="ctx-line">${tagHtml(t)}<span>${esc(x)}</span></div>`).join("");
+  const editor = FIELDS.map(([k, name]) => `<div class="field"><span>${name}</span><div class="opts" data-k="${k}">${(SCHEMA[k] || []).map((o) =>
+    `<button type="button" data-v="${esc(o)}" class="${o === c.ai[k] ? "ai-pick" : ""} ${r.status === "edit" && o === f[k] ? "on" + (o === c.ai[k] ? " same" : "") : ""}">${esc(o)}</button>`).join("")}</div></div>`).join("");
+  return `<article class="item ${st}" data-id="${esc(c.id)}">
+    <div class="head"><span class="no">#${c.no}</span><span class="badge">${c.kind === "irony" ? "反諷候選" : "中庸候選"}・${esc(c.rule)}</span><span>${esc(c.time.slice(0, 7))}</span>
+      <span class="status ${st}">${st === "agree" ? "✓ 已同意" : st === "changed" ? "✎ 已修改" : ""}</span></div>
+    <div class="ctx"><div class="ctx-title">文章：${esc(c.title || "（無標題）")}</div>${ctx}</div>
+    <div class="ai">
+      <div class="ai-row"><span class="ai-label">AI 判斷</span>
+        <span class="chip main">${esc(c.ai.type)}</span><span class="chip">態度：${esc(c.ai.attitude)}</span>
+        <span class="chip">對象：${esc(c.ai.target)}</span><span class="chip">方面：${esc(c.ai.aspect)}</span>
+        <span class="conf ${c.ai.confidence === "低" ? "low" : ""}">把握：${esc(c.ai.confidence)}</span></div>
+      <div class="reason">${esc(c.ai.reason)}</div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn ok ${r.status === "agree" ? "on" : ""}" data-act="agree">✓ 同意</button>
+      <button type="button" class="btn edit ${r.status === "edit" ? "on" : ""}" data-act="edit">✎ 修改</button>
+    </div>
+    <div class="editor ${r.status === "edit" ? "open" : ""}">${editor}
+      <div class="field"><span>備註</span><input type="text" placeholder="為什麼不同意、或拿不定的地方（選填）" value="${esc(r.note || "")}"></div>
+    </div>
+  </article>`;
+}
+
+function render() {
+  document.querySelectorAll("#filterTabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === filter));
+  const list = visible();
+  $("list").innerHTML = list.length ? list.map(itemHtml).join("") : `<div class="card" style="text-align:center;color:var(--text-3)">沒有符合的例句</div>`;
+  summary();
+}
+function refresh(card) {
+  const c = items.find((x) => x.id === card.dataset.id);
+  const tmp = document.createElement("div");
+  tmp.innerHTML = itemHtml(c);
+  card.replaceWith(tmp.firstElementChild);
+  summary();
+}
+
+$("list").addEventListener("click", (e) => {
+  const card = e.target.closest(".item");
+  if (!card) return;
+  const id = card.dataset.id, c = items.find((x) => x.id === id);
+  const act = e.target.closest("[data-act]");
+  const opt = e.target.closest(".opts button");
+  if (act) {
+    const r = rv[id] || {};
+    if (act.dataset.act === "agree") { rv[id] = r.status === "agree" ? { note: r.note } : { status: "agree", note: r.note }; }
+    else { rv[id] = r.status === "edit" ? { note: r.note } : { ...r, status: "edit", fix: r.fix || {} }; }
+    save(); refresh(card);
+  } else if (opt) {
+    const k = opt.parentElement.dataset.k;
+    const r = rv[id] = { ...(rv[id] || {}), status: "edit" };
+    r.fix = { ...(r.fix || {}), [k]: opt.dataset.v };
+    if (r.fix[k] === c.ai[k]) delete r.fix[k];
+    save(); refresh(card);
+  }
+});
+$("list").addEventListener("input", (e) => {
+  if (e.target.tagName !== "INPUT") return;
+  const id = e.target.closest(".item").dataset.id;
+  rv[id] = { ...(rv[id] || {}), note: e.target.value };
+  save();
+});
+document.querySelectorAll("#filterTabs button").forEach((b) => b.onclick = () => { filter = b.dataset.f; render(); });
+
+// ---- 送出結果：一行一則，只列已檢查的；欄位用 | 分隔 ----
+function resultText() {
+  const done = items.filter((c) => status(c) || (rv[c.id] && rv[c.id].note));
+  const lines = done.map((c) => {
+    const f = final(c), st = status(c);
+    const diff = FIELDS.filter(([k]) => f[k] !== c.ai[k]).map(([k, n]) => `${n}:${c.ai[k]}→${f[k]}`).join("；");
+    return [c.no, c.id, st === "changed" ? "修改" : st === "agree" ? "同意" : "未定", diff, (rv[c.id] && rv[c.id].note || "").replace(/[|\n]/g, " ")].join("|");
+  });
+  return [`#AI試標檢查 ${D.ai_meta.version} 已檢查 ${items.filter((c) => status(c)).length}/${items.length}`, "編號|id|結果|修改內容|備註", ...lines].join("\n");
+}
+$("copyBtn").onclick = async () => {
+  const text = resultText(), out = $("out");
+  out.value = text; out.style.display = "block";
+  try { await navigator.clipboard.writeText(text); $("copyHint").textContent = "已複製！直接貼到對話裡即可。"; }
+  catch (e) { out.select(); $("copyHint").textContent = "無法自動複製，請長按或全選下方文字後手動複製。"; }
+};
+$("csvBtn").onclick = () => {
+  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["編號", "id", "候選類別", "推噓", "留言內容", "結果", ...FIELDS.flatMap(([, n]) => ["AI " + n, "確認後 " + n]), "AI 把握", "AI 理由", "備註"];
+  const body = items.map((c) => {
+    const f = final(c), st = status(c);
+    return [c.no, c.id, c.kind === "irony" ? "反諷候選" : "中庸候選", c.tag, c.text, st === "changed" ? "修改" : st === "agree" ? "同意" : "未檢查",
+      ...FIELDS.flatMap(([k]) => [c.ai[k], st ? f[k] : ""]), c.ai.confidence, c.ai.reason, (rv[c.id] || {}).note || ""].map(q).join(",");
+  });
+  const blob = new Blob(["﻿" + [head.map(q).join(","), ...body].join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `AI試標檢查結果_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$("resetBtn").onclick = () => { if (confirm("確定清除這台裝置上的所有檢查結果？")) { rv = {}; save(); render(); } };
+
+$("themeBtn").onclick = () => {
+  const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+  const next = dark ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+render();
+</script>
+</body>
+</html>
