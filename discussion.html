@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中庸與反諷討論</title>
+<!--
+  會議討論資料：中庸用詞與反諷
+  例句來自 discussion_data.js（由 03_程式碼/dashboard/build_discussion.py 產生，文字已匿名化）
+  老師在網頁上的判斷只存在他自己的瀏覽器，按「匯出判斷結果」下載 CSV 回傳
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --grid: #e9e8e4;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --accent: #2a78d6;
+  --accent-soft: #e3eefb;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --hover: rgba(0, 0, 0, .045);
+  --mark: #fde68a;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+    --accent: #3987e5; --accent-soft: #1d2f45;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --hover: rgba(255,255,255,.06); --mark: #6b5310; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+  --accent: #3987e5; --accent-soft: #1d2f45;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --hover: rgba(255,255,255,.06); --mark: #6b5310; --shadow: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.7 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+.wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; }
+a { color: var(--accent); }
+
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.eyebrow { font-size: 13px; color: var(--text-3); }
+h1 { font-size: 26px; line-height: 1.35; margin: 2px 0 6px; }
+.meta { color: var(--text-2); font-size: 13px; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px;
+  white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn:hover { color: var(--text); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin: 18px 0 8px; }
+nav.toc a { color: var(--text-2); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); }
+
+section { margin-top: 36px; }
+h2 { font-size: 19px; margin: 0 0 4px; display: flex; align-items: baseline; gap: 10px; }
+h2 .num { color: var(--text-3); font-size: 14px; font-weight: 500; }
+.lead { color: var(--text-2); margin: 0 0 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+.callout { background: var(--accent-soft); border-radius: 12px; padding: 14px 18px; }
+.callout p { margin: 0; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi .label { color: var(--text-2); font-size: 12px; }
+.kpi .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .sub { color: var(--text-3); font-size: 12px; line-height: 1.5; }
+.note { font-size: 13px; color: var(--text-3); margin-top: 10px; }
+
+.defs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.defs h3 { font-size: 16px; margin: 0 0 6px; }
+.defs p { margin: 0 0 8px; color: var(--text-2); font-size: 14px; }
+.defs ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.defs li { margin-bottom: 4px; }
+.ex { color: var(--text); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-3); font-weight: 500; font-size: 12px; }
+.table-scroll { overflow-x: auto; }
+
+.howto { font-size: 14px; }
+.howto ol { margin: 6px 0 0; padding-left: 20px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 12px; }
+.tabs { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; }
+.tabs button { font: inherit; font-size: 14px; border: 0; background: none; color: var(--text-2); padding: 5px 14px; border-radius: 7px; cursor: pointer; }
+.tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+.toolbar label { font-size: 13px; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
+.toolbar select { font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; }
+.progress { font-size: 13px; color: var(--text-2); }
+.bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 4px; width: 160px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+.ex-list { display: grid; gap: 10px; }
+.ex-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; box-shadow: var(--shadow); }
+.ex-card.done { border-color: var(--accent); }
+.ex-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--text-3); }
+.badge { border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; font-size: 12px; color: var(--text-2); background: var(--surface-2); }
+.tag { font-weight: 600; color: var(--text-2); font-size: 13px; }
+.tag::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; vertical-align: 1px; background: var(--c); }
+.ex-text { font-size: 17px; margin: 6px 0 4px; word-break: break-word; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+details.ctx { font-size: 13px; color: var(--text-2); }
+details.ctx summary { cursor: pointer; color: var(--text-3); }
+.ctx-body { border-left: 2px solid var(--border); padding: 4px 0 4px 10px; margin: 6px 0 2px; }
+.ctx-title { color: var(--text); margin-bottom: 4px; }
+.ctx-line { display: flex; gap: 6px; }
+.ctx-line.self { color: var(--text); font-weight: 600; }
+.judge { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+.judge button {
+  font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); border-radius: 999px; padding: 3px 12px; cursor: pointer;
+}
+.judge button:hover { color: var(--text); border-color: var(--text-3); }
+.judge button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.judge input {
+  flex: 1 1 180px; font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; min-width: 0;
+}
+.more { text-align: center; margin-top: 12px; }
+.kw { font-size: 13px; color: var(--text-2); margin-top: 8px; }
+.kw b { color: var(--text); font-weight: 600; }
+
+.qs { counter-reset: q; display: grid; gap: 10px; }
+.q { padding-left: 46px; position: relative; }
+.q::before {
+  counter-increment: q; content: counter(q); position: absolute; left: 16px; top: 15px;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+  font-size: 13px; font-weight: 600; text-align: center; line-height: 22px;
+}
+.q h3 { font-size: 15px; margin: 0 0 4px; }
+.q p { margin: 0 0 6px; font-size: 14px; color: var(--text-2); }
+.q ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.q .rec { font-size: 13px; color: var(--text-3); margin-top: 6px; }
+footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); padding-top: 12px; }
+
+@media (max-width: 760px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .defs { grid-template-columns: 1fr; }
+  header { flex-direction: column; }
+  .top-actions { justify-content: flex-start; }
+  h1 { font-size: 22px; }
+  .q { padding-left: 16px; padding-top: 40px; }
+  .q::before { top: 12px; }
+}
+</style>
+<script src="discussion_data.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">指導教授會議討論資料</div>
+      <h1>社群留言中的中庸用詞與反諷</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="top-actions">
+      <a class="btn" href="index.html">← 資料瀏覽</a>
+      <button class="btn" id="themeBtn" type="button">切換深淺色</button>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="本頁目錄">
+    <a href="#recap">1. 上次會議結論</a>
+    <a href="#scale">2. 資料中的規模</a>
+    <a href="#defs">3. 定義草案</a>
+    <a href="#examples">4. 例句確認</a>
+    <a href="#questions">5. 請老師決定的問題</a>
+  </nav>
+
+  <section id="recap">
+    <h2><span class="num">1</span>上次會議結論（2026-10-20）</h2>
+    <div class="callout">
+      <p>先聚焦解決目前爬到的留言中的兩個問題：<b>用詞比較中庸</b>、情感不明確的留言，以及台灣網路上常見的<b>反諷</b>（字面意思與真正想表達的相反）。</p>
+    </div>
+  </section>
+
+  <section id="scale">
+    <h2><span class="num">2</span>這兩個問題在現有資料中的規模</h2>
+    <p class="lead">以 PTT car、EV 板 2021-01～2026-09 提到 Volvo 的文章與推文，用關鍵字規則初步篩選。</p>
+    <div class="kpis" id="kpis"></div>
+    <p class="note">候選數是關鍵字粗篩的結果，包含誤判，只能說明問題確實存在而且量不小；實際比例需要人工標註後才能確定。</p>
+  </section>
+
+  <section id="defs">
+    <h2><span class="num">3</span>定義草案</h2>
+    <p class="lead">提供給標註與模型使用的初步定義，請老師確認方向是否正確。</p>
+    <div class="defs">
+      <div class="card">
+        <h3>中庸用詞</h3>
+        <p>有表達態度，但情感<b>不強烈</b>或<b>正負並存</b>的評價。</p>
+        <ul>
+          <li>要和「<b>無評價</b>」分開：純提問、純資訊不算中庸<br><span class="ex">例：「這級距還可以看看 E-PACE」→ 無評價</span></li>
+          <li>同一個詞方向不同，要看上下文<br><span class="ex">「X4 就還好」→ 偏負面（不如預期）<br>「車寬還好吧」→ 偏正面（沒問題）</span></li>
+          <li>字面相同但不是評價的用法要排除<br><span class="ex">「還好沒買」＝幸好；「還可以二手賣」＝仍然能</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>反諷</h3>
+        <p><b>字面情感</b>與<b>實際態度</b>相反的表達，通常是用稱讚的字表達批評。</p>
+        <ul>
+          <li>標註時同時記錄「字面情感」與「實際情感」兩個值<br><span class="ex">「不愧是最安全的車，把速限降低就更難出事了」→ 字面正面、實際負面</span></li>
+          <li>同一個慣用語也可能是真心稱讚，不能只看關鍵字<br><span class="ex">「學長不愧是學長，專業」→ 真心稱讚</span></li>
+          <li><b>PTT 特有線索</b>：推文本身帶有推／噓標記，「噓」卻用稱讚字眼時，很可能是反諷，可用來大量找出候選句</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="font-size:16px;margin:0 0 8px">建議的標註欄位</h3>
+      <div class="table-scroll">
+        <table>
+          <tr><th>欄位</th><th>可選值</th><th>說明</th></tr>
+          <tr><td>情感</td><td>正面／負面／中庸／無評價</td><td>原本的「中立」拆成「中庸（有態度但不強烈）」與「無評價」</td></tr>
+          <tr><td>是否反諷</td><td>是／否</td><td>是的話，「情感」欄填<b>實際</b>態度</td></tr>
+          <tr><td>字面情感</td><td>正面／負面／中庸</td><td>只有反諷句需要填，用來分析字面與實際的落差</td></tr>
+          <tr><td>判斷依據</td><td>只看推文／需要上下文</td><td>記錄是否要看標題或前後推文才判斷得出來</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="examples">
+    <h2><span class="num">4</span>例句確認</h2>
+    <p class="lead">以下是從資料中篩出的實際留言，帳號、IP 與連結都已隱藏。</p>
+    <div class="callout howto">
+      <b>老師可以直接在網頁上標註</b>
+      <ol>
+        <li>在每則例句下方點選您的判斷，需要時可在右側輸入備註</li>
+        <li>點「上下文」可看文章標題與前後推文</li>
+        <li>標完後按「匯出判斷結果」，下載的 CSV 檔回傳即可（判斷只存在您自己的瀏覽器，不會上傳）</li>
+      </ol>
+    </div>
+    <div class="toolbar">
+      <div class="tabs" role="tablist">
+        <button type="button" data-kind="irony" class="on">反諷候選</button>
+        <button type="button" data-kind="neutral">中庸候選</button>
+      </div>
+      <label>規則 <select id="ruleSel"></select></label>
+      <div class="progress"><span id="progText"></span><div class="bar"><i id="progBar"></i></div></div>
+      <button class="btn primary" id="exportBtn" type="button">匯出判斷結果</button>
+    </div>
+    <div class="ex-list" id="exList"></div>
+    <div class="more" id="more"></div>
+    <div class="kw" id="kw"></div>
+  </section>
+
+  <section id="questions">
+    <h2><span class="num">5</span>請老師決定的問題</h2>
+    <p class="lead">以下決定會影響後續的標註方式與研究範圍。</p>
+    <div class="qs">
+      <div class="card q">
+        <h3>研究問題是否改寫，以中庸與反諷為主軸？</h3>
+        <p>原計畫中反諷只是 RQ2 的一部分，若成為主軸，研究問題可改寫為：</p>
+        <ul>
+          <li>RQ1：中庸用詞與反諷在繁中汽車社群中的分布與特徵為何？</li>
+          <li>RQ2：字典法、微調模型、大型語言模型在中庸句與反諷句上的表現落差多大？</li>
+          <li>RQ3：結合推噓標記、上下文、思考鏈推理等方法，能否改善這兩類句子的判讀？</li>
+        </ul>
+      </div>
+      <div class="card q">
+        <h3>情感標籤是否採用上方建議的欄位？</h3>
+        <p>把「中立」拆成「中庸」與「無評價」，並為反諷另外記錄字面情感。</p>
+      </div>
+      <div class="card q">
+        <h3>五大方面（安全、車載、動力、內裝、售後）是否保留？</h3>
+        <ul>
+          <li>保留：可回答「哪個方面最常被反諷」，但每句要標「方面 × 情感 × 反諷」，標註量大幅增加</li>
+          <li>不保留：專注在句子層級的情感與反諷，標註較快、Kappa 較容易達標</li>
+        </ul>
+      </div>
+      <div class="card q">
+        <h3>判讀時要給模型多少上下文？</h3>
+        <p>反諷常要看前文才知道。可以比較「只給推文」與「推文＋文章標題＋前後推文」兩種設定，這本身也能成為一個實驗。</p>
+      </div>
+      <div class="card q">
+        <h3>「社群情感是否領先銷量」的計量分析（原 RQ4）是否保留？</h3>
+        <p>若重心轉向語言現象，可以只保留為應用案例或改列未來研究，省下整理監理所銷量資料的時間。</p>
+      </div>
+      <div class="card q">
+        <h3>是否仍需要 Mobile01、Dcard 的資料？</h3>
+        <p>PTT 有推噓標記可輔助找反諷，資料已足夠做主要分析；其他來源可用來比較「不同平台的反諷習慣」，但會增加爬取與標註時間。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    例句為關鍵字規則自動篩選，並非最終分類結果。資料來源：PTT 公開看板；為保護隱私，使用者帳號、IP 位址與原文連結均已隱藏。
+  </footer>
+</div>
+
+<script>
+const D = window.DISCUSSION_DATA || { candidates: [], stats: {}, keywords: {} };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (n) => (n || 0).toLocaleString("zh-TW");
+const TAG_COLOR = { "推": "var(--s1)", "噓": "var(--s2)", "→": "var(--s3)" };
+const LABELS = ["反諷", "中庸", "正面", "負面", "無評價", "不確定"];
+const STORE_KEY = "discussion-judgments-v1";
+
+// ---- 判斷結果存在瀏覽器（失敗時仍可在本次瀏覽中使用）----
+let judgments = {};
+try { judgments = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (e) {}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(judgments)); } catch (e) {} }
+
+// ---- 標頭與規模 ----
+const s = D.stats;
+$("meta").textContent = D.generated_at ? `資料整理：${D.generated_at}・${fmt(s.articles)} 篇文章、${fmt(s.pushes)} 則推文` : "尚無資料";
+const arrowPct = s.pushes ? Math.round((s.arrow / s.pushes) * 100) : 0;
+$("kpis").innerHTML = [
+  ["推文總數", fmt(s.pushes), `推 ${fmt(s.push)}・噓 ${fmt(s.boo)}・→ ${fmt(s.arrow)}`],
+  ["不表態的「→」", arrowPct + "%", "將近一半的推文不標推或噓，中庸表達很普遍"],
+  ["反諷候選", fmt(s.irony), Object.entries(s.by_rule || {}).filter(([k]) => k !== "中庸用詞").map(([k, v]) => `${k} ${fmt(v)}`).join("・")],
+  ["中庸候選", fmt(s.neutral), "含「還好、普普、見仁見智」等用詞"],
+].map(([l, v, sub]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
+
+// ---- 例句 ----
+const state = { kind: "irony", rule: "", showAll: false };
+
+function markHits(text, hits) {
+  let out = esc(text);
+  [...new Set(hits)].sort((a, b) => b.length - a.length).forEach((h) => {
+    const e = esc(h).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(e, "g"), (m) => `<mark>${m}</mark>`);
+  });
+  return out;
+}
+function tagHtml(tag) { return `<span class="tag" style="--c:${TAG_COLOR[tag] || "var(--text-3)"}">${esc(tag)}</span>`; }
+
+function lists() {
+  const all = D.candidates.filter((c) => c.kind === state.kind && (!state.rule || c.rule === state.rule));
+  const featured = all.filter((c) => c.featured);
+  return { all, featured, shown: state.showAll || !featured.length ? all : featured };
+}
+
+function updateProgress(list) {
+  const done = list.filter((c) => judgments[c.id] && judgments[c.id].label).length;
+  $("progText").textContent = `已判斷 ${done} / ${list.length} 則`;
+  $("progBar").style.width = list.length ? (done / list.length) * 100 + "%" : "0";
+}
+
+function render() {
+  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.kind === state.kind));
+  const rules = [...new Set(D.candidates.filter((c) => c.kind === state.kind).map((c) => c.rule))];
+  $("ruleSel").innerHTML = `<option value="">全部</option>` + rules.map((r) => `<option ${r === state.rule ? "selected" : ""}>${esc(r)}</option>`).join("");
+
+  const { all, featured, shown: list } = lists();
+  updateProgress(list);
+
+  $("exList").innerHTML = list.length ? list.map((c) => {
+    const j = judgments[c.id] || {};
+    const ctx = c.before.map(([t, x]) => `<div class="ctx-line">${tagHtml(t)}<span>${esc(x)}</span></div>`).join("") +
+      `<div class="ctx-line self">${tagHtml(c.tag)}<span>${esc(c.text)}</span></div>` +
+      c.after.map(([t, x]) => `<div class="ctx-line">${tagHtml(t)}<span>${esc(x)}</span></div>`).join("");
+    return `<article class="ex-card${j.label ? " done" : ""}" data-id="${esc(c.id)}">
+      <div class="ex-head"><span class="badge">${esc(c.rule)}</span>${tagHtml(c.tag)}<span>${esc(c.time.slice(0, 7))}・PTT ${esc(c.board)}</span></div>
+      <div class="ex-text">${markHits(c.text, c.hits)}</div>
+      <details class="ctx"><summary>上下文</summary><div class="ctx-body"><div class="ctx-title">文章：${esc(c.title)}</div>${ctx}</div></details>
+      <div class="judge">${LABELS.map((l) => `<button type="button" data-label="${l}" class="${j.label === l ? "on" : ""}">${l}</button>`).join("")}
+        <input type="text" placeholder="備註（選填）" value="${esc(j.note || "")}" aria-label="備註"></div>
+    </article>`;
+  }).join("") : `<div class="card" style="text-align:center;color:var(--text-3)">沒有符合的例句</div>`;
+
+  $("more").innerHTML = featured.length && featured.length < all.length
+    ? `<button class="btn" id="toggleAll" type="button">${state.showAll ? `只看精選 ${featured.length} 則` : `顯示全部 ${all.length} 則`}</button>`
+    : "";
+  if ($("toggleAll")) $("toggleAll").onclick = () => { state.showAll = !state.showAll; render(); };
+
+  const kwNames = state.kind === "irony" ? ["噓＋稱讚字", "反諷慣用語"] : ["中庸用詞"];
+  $("kw").innerHTML = "篩選用的關鍵字：" + kwNames.map((n) => `<div><b>${esc(n)}</b>：${(D.keywords[n] || []).map(esc).join("、")}</div>`).join("");
+}
+
+$("exList").addEventListener("click", (e) => {
+  const btn = e.target.closest(".judge button");
+  if (!btn) return;
+  const card = btn.closest(".ex-card"), id = card.dataset.id;
+  const j = judgments[id] || {};
+  j.label = j.label === btn.dataset.label ? "" : btn.dataset.label;
+  judgments[id] = j;
+  save();
+  card.classList.toggle("done", !!j.label);
+  card.querySelectorAll(".judge button").forEach((b) => b.classList.toggle("on", b.dataset.label === j.label));
+  updateProgress(lists().shown);
+});
+$("exList").addEventListener("input", (e) => {
+  if (!e.target.matches(".judge input")) return;
+  const id = e.target.closest(".ex-card").dataset.id;
+  judgments[id] = { ...(judgments[id] || {}), note: e.target.value };
+  save();
+});
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => { state.kind = b.dataset.kind; state.rule = ""; state.showAll = false; render(); });
+$("ruleSel").onchange = (e) => { state.rule = e.target.value; render(); };
+
+// ---- 匯出 CSV（加 BOM 讓 Excel 正確顯示中文）----
+$("exportBtn").onclick = () => {
+  const rows = D.candidates.filter((c) => judgments[c.id] && (judgments[c.id].label || judgments[c.id].note));
+  if (!rows.length) { alert("尚未標註任何例句"); return; }
+  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["編號", "類別", "篩選規則", "推噓", "留言內容", "文章標題", "老師判斷", "備註"];
+  const body = rows.map((c) => [c.id, c.kind === "irony" ? "反諷候選" : "中庸候選", c.rule, c.tag, c.text, c.title, judgments[c.id].label || "", judgments[c.id].note || ""].map(q).join(","));
+  const blob = new Blob(["﻿" + [head.map(q).join(","), ...body].join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `中庸反諷判斷結果_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+// ---- 深淺色 ----
+$("themeBtn").onclick = () => {
+  const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+  const next = dark ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+render();
+</script>
+</body>
+</html>

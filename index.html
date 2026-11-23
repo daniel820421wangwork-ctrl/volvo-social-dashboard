@@ -82,7 +82,10 @@ h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .01em; }
 .icon-btn {
   border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
   border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap;
+  text-decoration: none; display: inline-flex; align-items: center;
 }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 520px) { header { flex-direction: column; } .header-actions { justify-content: flex-start; } }
 .icon-btn:hover { color: var(--text); }
 
 .filters {
@@ -185,7 +188,10 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
       <h1>Volvo 社群輿情資料瀏覽</h1>
       <div class="meta" id="meta"></div>
     </div>
-    <button class="icon-btn" id="themeBtn" type="button">切換深淺色</button>
+    <div class="header-actions">
+      <a class="icon-btn" href="discussion.html">會議討論：中庸與反諷 →</a>
+      <button class="icon-btn" id="themeBtn" type="button">切換深淺色</button>
+    </div>
   </header>
 
   <section class="filters" aria-label="篩選條件">
