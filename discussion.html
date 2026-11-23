@@ -186,7 +186,8 @@ footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1p
     <a href="#scale">2. 資料中的規模</a>
     <a href="#defs">3. 定義草案</a>
     <a href="#examples">4. 例句確認</a>
-    <a href="#questions">5. 請老師決定的問題</a>
+    <a href="#pilot">5. AI 試標結果</a>
+    <a href="#questions">6. 請老師決定的問題</a>
   </nav>
 
   <section id="recap">
@@ -265,8 +266,27 @@ footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1p
     <div class="kw" id="kw"></div>
   </section>
 
+  <section id="pilot">
+    <h2><span class="num">5</span>AI 試標 100 則的初步結果</h2>
+    <p class="lead" id="pilotLead"></p>
+    <div class="kpis" id="pilotKpis"></div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="font-size:16px;margin:0 0 8px">關鍵字規則抓到的句子，實際是什麼？</h3>
+      <div class="table-scroll"><table id="pilotDist"></table></div>
+      <p class="note" id="pilotTargets"></p>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="font-size:16px;margin:0 0 8px">值得討論的例子</h3>
+      <div class="table-scroll"><table id="pilotEx"></table></div>
+    </div>
+    <div class="callout" style="margin-top:12px">
+      <p><b>限制</b>：一致率 98% 是研究者<b>看過 AI 答案後</b>確認的結果，容易受 AI 答案影響（錨定效應），不能當作 AI 的準確率。正式的測試集需要<b>不看 AI 答案</b>獨立標註，並由第二位標註者計算 Kappa。AI 標註由 Claude 在對話中直接判讀，正式實驗會改用固定版本的模型與提示詞重跑。</p>
+    </div>
+    <p class="note"><a href="review.html">→ 開啟逐則檢查頁，看全部 100 則的 AI 判斷與理由</a></p>
+  </section>
+
   <section id="questions">
-    <h2><span class="num">5</span>請老師決定的問題</h2>
+    <h2><span class="num">6</span>請老師決定的問題</h2>
     <p class="lead">以下決定會影響後續的標註方式與研究範圍。</p>
     <div class="qs">
       <div class="card q">
@@ -292,6 +312,22 @@ footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1p
       <div class="card q">
         <h3>判讀時要給模型多少上下文？</h3>
         <p>反諷常要看前文才知道。可以比較「只給推文」與「推文＋文章標題＋前後推文」兩種設定，這本身也能成為一個實驗。</p>
+      </div>
+      <div class="card q">
+        <h3>可以用「AI 預標＋人工修正」減少標註量嗎？</h3>
+        <p>試標顯示 AI 預標後人工只需修正少數句子，速度快很多。建議分工：</p>
+        <ul>
+          <li>訓練資料：AI 預標＋人工修正（量大，可接受少量誤差）</li>
+          <li>測試集（標準答案）：仍然人工<b>盲標</b>，不看 AI 答案，並找第二位標註者計算 Kappa</li>
+        </ul>
+      </div>
+      <div class="card q">
+        <h3>反諷的對象不是 Volvo 時，要不要算進品牌情感？</h3>
+        <p>試標中真正的反諷句，約一半是在酸其他網友、車迷或其他品牌，而不是 Volvo。建議標註時記錄「評價對象」，只有對象是 Volvo 的句子才計入品牌情感。</p>
+      </div>
+      <div class="card q">
+        <h3>情感分析做到品牌層級，還是細分到車款（XC／EX 車系）？</h3>
+        <p>目前標的是對 Volvo 品牌的態度。若要分車系，車款可從推文或文章標題自動判斷，不需要額外人工標註。</p>
       </div>
       <div class="card q">
         <h3>「社群情感是否領先銷量」的計量分析（原 RQ4）是否保留？</h3>
@@ -333,6 +369,46 @@ $("kpis").innerHTML = [
   ["反諷候選", fmt(s.irony), Object.entries(s.by_rule || {}).filter(([k]) => k !== "中庸用詞").map(([k, v]) => `${k} ${fmt(v)}`).join("・")],
   ["中庸候選", fmt(s.neutral), "含「還好、普普、見仁見智」等用詞"],
 ].map(([l, v, sub]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
+
+// ---- AI 試標結果 ----
+(function renderPilot() {
+  const P = D.pilot_result;
+  if (!P) { $("pilot").style.display = "none"; document.querySelector('nav.toc a[href="#pilot"]').style.display = "none"; return; }
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0) + "%";
+  const I = P.by_kind.irony, N = P.by_kind.neutral;
+  $("pilotLead").textContent = `從反諷候選、中庸候選各抽 50 則，由 AI（Claude）先標註類型、真正態度、評價對象與方面，再由研究者逐則確認（${P.meta.reviewed_at}）。`;
+  $("pilotKpis").innerHTML = [
+    ["研究者確認", `${P.n} 則`, `同意 ${P.n - P.changed.length}・修改 ${P.changed.length}`],
+    ["類型與 AI 一致", pct(P.agree.type, P.n), `態度 ${pct(P.agree.attitude, P.n)}・對象 ${pct(P.agree.target, P.n)}・方面 ${pct(P.agree.aspect, P.n)}`],
+    ["規則抓的反諷，真的是反諷", pct(I.precision, I.n), `${I.precision} / ${I.n} 則，其餘多為直接的負評`],
+    ["規則抓的中庸，真的是中庸", pct(N.precision, N.n), `${N.precision} / ${N.n} 則，常見誤抓：「還好」＝幸好`],
+  ].map(([l, v, sub]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
+
+  const types = ["反諷", "中庸", "正面", "負面", "無評價"];
+  $("pilotDist").innerHTML = `<tr><th>規則類別</th>${types.map((t) => `<th>${t}</th>`).join("")}</tr>` +
+    [["irony", "反諷候選", "反諷"], ["neutral", "中庸候選", "中庸"]].map(([k, name, want]) => {
+      const g = P.by_kind[k];
+      return `<tr><td>${name}（${g.n}）</td>${types.map((t) => `<td style="font-variant-numeric:tabular-nums">${t === want ? "<b>" : ""}${g.dist[t] || 0}${t === want ? "</b>" : ""}</td>`).join("")}</tr>`;
+    }).join("");
+  const tg = I.targets, totalI = I.precision;
+  $("pilotTargets").textContent = `真正的反諷句（${totalI} 則）酸的對象：Volvo ${tg["Volvo"] || 0}、網友或人 ${tg["網友／人"] || 0}、其他車廠 ${tg["其他車廠"] || 0}、無特定 ${tg["無特定"] || 0}，約一半不是在評 Volvo。`;
+
+  const EX = [
+    ["e9c1f8640793-124", "要看上下文：單看是肯定，下一則接「醜了點 貴了點 妥善率差了點」"],
+    ["0eb5e5bc719d-129", "同一個「還好」，這則是真心話…"],
+    ["0eb5e5bc719d-130", "…緊接的下一則卻是反諷"],
+    ["a689e008cc58-286", "關鍵字誤抓：「還好」＝幸好"],
+    ["f9d5fd99d120-99", "「呵呵」只是語氣，字面本來就是負評，不算反諷"],
+    ["7c96f778a93c-19", "反諷對象是 Volvo 車迷，不是 Volvo 本身"],
+    ["0d8406a6fdc5-5", "研究者與 AI 意見不同：AI 判反諷，研究者判真心推薦"],
+  ];
+  const byId = Object.fromEntries(D.candidates.map((c) => [c.id, c]));
+  $("pilotEx").innerHTML = `<tr><th>留言</th><th>AI → 確認後</th><th>重點</th></tr>` + EX.filter(([id]) => byId[id] && byId[id].human).map(([id, why]) => {
+    const c = byId[id], a = c.ai, h = c.human;
+    const lab = a.type === h.type ? esc(h.type) : `${esc(a.type)} → <b>${esc(h.type)}</b>`;
+    return `<tr><td>${tagHtml(c.tag)} ${esc(c.text)}</td><td style="white-space:nowrap">${lab}</td><td>${esc(why)}</td></tr>`;
+  }).join("");
+})();
 
 // ---- 例句 ----
 const state = { kind: "irony", rule: "", showAll: false };
