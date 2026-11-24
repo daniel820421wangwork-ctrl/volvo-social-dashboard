@@ -187,7 +187,8 @@ footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1p
     <a href="#defs">3. 定義草案</a>
     <a href="#examples">4. 例句確認</a>
     <a href="#pilot">5. AI 試標結果</a>
-    <a href="#questions">6. 請老師決定的問題</a>
+    <a href="#topics">6. BERTopic 主題分析</a>
+    <a href="#questions">7. 請老師決定的問題</a>
   </nav>
 
   <section id="recap">
@@ -285,8 +286,25 @@ footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1p
     <p class="note"><a href="review.html">→ 開啟逐則檢查頁，看全部 100 則的 AI 判斷與理由</a></p>
   </section>
 
+  <section id="topics">
+    <h2><span class="num">6</span>BERTopic 主題分析：反諷與中庸都在講什麼</h2>
+    <p class="lead" id="topicLead"></p>
+    <div class="kpis" id="topicKpis"></div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="font-size:16px;margin:0 0 4px">各主題的反諷、中庸候選密度</h3>
+      <p class="note" style="margin:0 0 8px" id="topicNote"></p>
+      <div class="table-scroll"><table id="topicTable"></table></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="font-size:16px;margin:0 0 4px">BERTopic 主題 vs. LLM 方面標註</h3>
+      <p class="note" style="margin:0 0 8px" id="cmpNote"></p>
+      <div class="table-scroll"><table id="cmpTable"></table></div>
+    </div>
+    <div class="callout" style="margin-top:12px" id="topicFindings"></div>
+  </section>
+
   <section id="questions">
-    <h2><span class="num">6</span>請老師決定的問題</h2>
+    <h2><span class="num">7</span>請老師決定的問題</h2>
     <p class="lead">以下決定會影響後續的標註方式與研究範圍。</p>
     <div class="qs">
       <div class="card q">
@@ -307,6 +325,15 @@ footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1p
         <ul>
           <li>保留：可回答「哪個方面最常被反諷」，但每句要標「方面 × 情感 × 反諷」，標註量大幅增加</li>
           <li>不保留：專注在句子層級的情感與反諷，標註較快、Kappa 較容易達標</li>
+        </ul>
+      </div>
+      <div class="card q">
+        <h3>五大方面是否依 BERTopic 的結果增修？</h3>
+        <p>BERTopic 自動分出的主題中，約一半的推文不屬於原本的五大方面，而且反諷最集中的正是這些主題。建議考慮新增：</p>
+        <ul>
+          <li><b>品牌與產地</b>：中國吉利背景、瑞典血統、品牌價值</li>
+          <li><b>價格與保值</b>：售價、二手價、CP 值</li>
+          <li><b>銷售服務</b>：業務、交車與購車糾紛（目前併在售後養護）</li>
         </ul>
       </div>
       <div class="card q">
@@ -408,6 +435,50 @@ $("kpis").innerHTML = [
     const lab = a.type === h.type ? esc(h.type) : `${esc(a.type)} → <b>${esc(h.type)}</b>`;
     return `<tr><td>${tagHtml(c.tag)} ${esc(c.text)}</td><td style="white-space:nowrap">${lab}</td><td>${esc(why)}</td></tr>`;
   }).join("");
+})();
+
+// ---- BERTopic 主題分析 ----
+(function renderTopics() {
+  const T = D.topic_result;
+  if (!T) { $("topics").style.display = "none"; document.querySelector('nav.toc a[href="#topics"]').style.display = "none"; return; }
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0) + "%";
+  const other = T.aspect_share["其他"] || 0;
+  $("topicLead").textContent = `用 BGE-M3 把 ${fmt(T.n_docs)} 則推文（排除 6 字以下）轉成語意向量，再以 BERTopic（UMAP＋HDBSCAN）自動分群，合併成 ${T.n_topics} 個主題（另排除純圖片、影片連結的群）。主題名稱依各群關鍵詞與代表推文命名。`;
+  $("topicKpis").innerHTML = [
+    ["自動分出的主題", `${T.n_topics} 個`, `涵蓋 ${fmt(T.n_kept)} 則推文`],
+    ["不屬於五大方面", pct(other, T.n_kept), "選車比較、品牌與產地、價格、業務糾紛等"],
+    ["反諷候選平均密度", `${T.base_rate.irony}‰`, "每千則推文中的反諷候選數"],
+    ["主題與 LLM 方面一致", pct(T.compare.match, T.compare.n), `${T.compare.match} / ${T.compare.n} 則（LLM 標為五大方面者）`],
+  ].map(([l, v, sub]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
+
+  $("topicNote").textContent = `‰ = 每千則推文中的候選數；全體平均：反諷 ${T.base_rate.irony}‰、中庸 ${T.base_rate.neutral}‰。高於平均 1.5 倍以上以粗體標示；推文少於 500 則的主題數量少、比例不穩定，以灰字顯示。候選為關鍵字規則結果，約一半為真。`;
+  const hl = (rate, base, small) => small ? `<span style="color:var(--text-3)">${rate}</span>` : rate >= base * 1.5 ? `<b>${rate}</b>` : rate;
+  $("topicTable").innerHTML = `<tr><th>主題</th><th>對應方面</th><th>推文數</th><th>反諷候選</th><th>中庸候選</th><th>關鍵詞</th></tr>` +
+    T.topics.map((t) => {
+      const small = t.size < 500;
+      return `<tr><td>${esc(t.name)}</td><td style="white-space:nowrap">${esc(t.aspect)}</td><td style="font-variant-numeric:tabular-nums">${fmt(t.size)}</td>
+        <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${t.irony} 則・${hl(t.irony_rate, T.base_rate.irony, small)}‰</td>
+        <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${t.neutral} 則・${hl(t.neutral_rate, T.base_rate.neutral, small)}‰</td>
+        <td style="color:var(--text-2);font-size:13px">${t.words.map(esc).join("、")}</td></tr>`;
+    }).join("");
+
+  const asp = ["安全防護", "智慧車載", "動力續航", "內裝空間", "售後養護", "其他"];
+  $("cmpNote").textContent = "同一則推文：列是 LLM（經人工確認）標的方面，欄是它所屬 BERTopic 主題對應的方面。對角線為一致。";
+  $("cmpTable").innerHTML = `<tr><th>LLM 方面 ＼ 主題方面</th>${asp.map((a) => `<th>${a}</th>`).join("")}</tr>` +
+    asp.slice(0, 5).filter((a) => T.compare.table[a]).map((a) => `<tr><td>${a}</td>${asp.map((b) => {
+      const v = (T.compare.table[a] || {})[b] || 0;
+      return `<td style="font-variant-numeric:tabular-nums">${a === b ? `<b>${v}</b>` : v || `<span style="color:var(--text-3)">0</span>`}</td>`;
+    }).join("")}</tr>`).join("");
+
+  const big = T.topics.filter((t) => t.size >= 500);
+  const topIrony = [...big].sort((a, b) => b.irony_rate - a.irony_rate).slice(0, 4);
+  const topNeutral = [...big].sort((a, b) => b.neutral_rate - a.neutral_rate).slice(0, 3);
+  $("topicFindings").innerHTML = `<b>初步發現</b><ol>
+    <li><b>反諷集中在品牌與產地，而不是具體功能</b>：反諷候選密度最高的主題是 ${topIrony.map((t) => `「${esc(t.name)}」${t.irony_rate}‰`).join("、")}（平均 ${T.base_rate.irony}‰）。其中「恭喜交車」偏高，部分是稱讚字被規則誤抓，也有真的反諷。</li>
+    <li><b>中庸用詞偏向產品使用與選車</b>：密度較高的是 ${topNeutral.map((t) => `「${esc(t.name)}」${t.neutral_rate}‰`).join("、")}（平均 ${T.base_rate.neutral}‰），網友談實際使用、給選車建議時較常給保留評價。</li>
+    <li><b>五大方面涵蓋不足</b>：約 ${pct(other, T.n_kept)} 的推文落在五大方面以外的主題，例如中國吉利背景、品牌價值、業務糾紛、二手價。</li>
+    <li><b>BERTopic 和 LLM 是互補的</b>：兩者對方面的一致率只有 ${pct(T.compare.match, T.compare.n)}。BERTopic 分的是「這串在聊什麼」，LLM 判斷的是「這一句在評什麼」，短的反諷句常和所在討論串的主題不同。適合的分工是：BERTopic 用來發現主題和看趨勢，LLM 用來逐句判斷情感與反諷。</li>
+  </ol>`;
 })();
 
 // ---- 例句 ----
