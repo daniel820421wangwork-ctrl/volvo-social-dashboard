@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>推文主題地圖</title>
+<!--
+  主題地圖：每個點是一則推文，位置來自 BGE-M3 向量（1,024 維）經 UMAP 壓成 2 維，顏色與分組來自 BERTopic
+  資料來自 topic_map_data.js（由 03_程式碼/topic_model/topic_map.py 產生，文字已匿名化）
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface: #fcfcfb; --surface-2: #f0efec; --border: #e2e1dc; --grid: #e9e8e4;
+  --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974;
+  --accent: #2a78d6; --accent-soft: #e3eefb;
+  --a1: #2a78d6; --a2: #eb6834; --a3: #1baf7a; --a4: #eda100; --a5: #e87ba4;
+  --other: #a3a198; --faint: #d6d4cc; --push: #2a78d6; --arrow: #a3a198; --boo: #e34948; --ring: #0b0b0b;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+    --accent: #3987e5; --accent-soft: #1d2f45;
+    --a1: #3987e5; --a2: #d95926; --a3: #199e70; --a4: #c98500; --a5: #d55181;
+    --other: #6b6a64; --faint: #363634; --push: #3987e5; --arrow: #6b6a64; --boo: #e66767; --ring: #f0efec;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+  --accent: #3987e5; --accent-soft: #1d2f45;
+  --a1: #3987e5; --a2: #d95926; --a3: #199e70; --a4: #c98500; --a5: #d55181;
+  --other: #6b6a64; --faint: #363634; --push: #3987e5; --arrow: #6b6a64; --boo: #e66767; --ring: #f0efec;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.7 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; }
+a { color: var(--accent); }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.eyebrow { font-size: 13px; color: var(--text-3); }
+h1 { font-size: 26px; line-height: 1.35; margin: 2px 0 6px; }
+h2 { font-size: 17px; margin: 0 0 6px; }
+.meta { color: var(--text-2); font-size: 13px; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.btn { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.btn:hover { color: var(--text); }
+.btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.steps .n { font-size: 12px; color: var(--accent); font-weight: 600; }
+.steps h3 { font-size: 15px; margin: 0 0 4px; }
+.steps p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--text-2); }
+.toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+.toolbar select, .toolbar input { font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; }
+.toolbar input { width: 160px; }
+.spacer { flex: 1; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; align-items: start; }
+.mapbox { position: relative; padding: 0; overflow: hidden; }
+#map { display: block; width: 100%; height: 600px; cursor: grab; touch-action: none; }
+#map.drag { cursor: grabbing; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); padding: 10px 14px; border-top: 1px solid var(--border); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.hint { position: absolute; left: 12px; right: 56px; top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--text-3); pointer-events: none; background: var(--surface); padding: 2px 8px; border-radius: 6px; opacity: .9; }
+.zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.zoom .btn { width: 32px; height: 32px; justify-content: center; padding: 0; font-size: 16px; }
+.side { max-height: 660px; overflow: auto; padding: 8px 6px; }
+.side h3 { font-size: 13px; color: var(--text-3); font-weight: 500; margin: 4px 8px 6px; }
+.trow { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+.trow:hover { background: var(--surface-2); }
+.trow.on { background: var(--accent-soft); }
+.trow i { width: 10px; height: 10px; border-radius: 50%; }
+.trow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trow .sz { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; z-index: 10; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.14); display: none; max-width: 320px; line-height: 1.55; }
+.tip .tx { color: var(--text); margin-bottom: 4px; word-break: break-word; }
+.tip .mt { color: var(--text-3); font-size: 12px; }
+.detail { margin-top: 12px; }
+.detail .empty { color: var(--text-3); font-size: 14px; }
+.detail .main { font-size: 17px; margin: 4px 0 6px; word-break: break-word; }
+.detail .mt { font-size: 12px; color: var(--text-3); }
+.chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; font-size: 12px; color: var(--text-2); background: var(--surface-2); margin-right: 4px; }
+.chip i { width: 7px; height: 7px; border-radius: 50%; }
+.nn { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; }
+.nn h3 { font-size: 14px; margin: 0 0 2px; }
+.nn .sub { font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.nrow { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid var(--grid); cursor: pointer; font-size: 14px; }
+.nrow:first-of-type { border-top: 0; }
+.nrow:hover .t { color: var(--accent); }
+.nrow .s { font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 13px; }
+.nrow .bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+.nrow .bar b { display: block; height: 100%; background: var(--accent); }
+.nrow .t { word-break: break-word; }
+.nrow .t small { display: block; color: var(--text-3); font-size: 12px; }
+.note { font-size: 13px; color: var(--text-3); margin-top: 10px; }
+footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); padding-top: 12px; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .side { max-height: 320px; }
+  .steps { grid-template-columns: minmax(0, 1fr); }
+  #map { height: 440px; }
+  header { flex-direction: column; }
+  .top-actions { justify-content: flex-start; }
+  h1 { font-size: 22px; }
+}
+</style>
+<script src="topic_map_data.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">BERTopic＋BGE-M3</div>
+      <h1>推文主題地圖</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="top-actions">
+      <a class="btn" href="index.html">資料瀏覽</a>
+      <a class="btn" href="progress.html">研究進度</a>
+      <a class="btn" href="discussion.html">會議討論</a>
+      <button class="btn" id="themeBtn" type="button">切換深淺色</button>
+    </div>
+  </header>
+
+  <div class="steps">
+    <div class="card"><div class="n">步驟 1｜BGE-M3</div><h3>把推文變成座標</h3><p id="s1"></p></div>
+    <div class="card"><div class="n">步驟 2｜UMAP</div><h3>壓成平面才看得到</h3><p>1,024 維沒辦法畫，所以壓成 2 維。壓縮會盡量保留「誰跟誰比較近」，但會有失真：圖上的橫軸、縱軸本身沒有意義，只看遠近。</p></div>
+    <div class="card"><div class="n">步驟 3｜BERTopic</div><h3>擠在一起的就是一組</h3><p id="s3"></p></div>
+  </div>
+
+  <div class="toolbar">
+    <label>上色依據
+      <select id="colorBy">
+        <option value="aspect">主題對應的方面</option>
+        <option value="tag">推／→／噓</option>
+      </select>
+    </label>
+    <label>找關鍵字 <input id="q" type="search" placeholder="例如：保養、好棒棒"></label>
+    <span id="qInfo"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="clearBtn" type="button">清除選取</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="card mapbox">
+        <canvas id="map" role="img" aria-label="推文主題散佈圖"></canvas>
+        <div class="hint" id="hint">滑過看推文・點一下看最相近的推文・滾輪縮放・拖曳移動</div>
+        <div class="zoom">
+          <button class="btn" id="zin" type="button" aria-label="放大">+</button>
+          <button class="btn" id="zout" type="button" aria-label="縮小">−</button>
+          <button class="btn" id="zreset" type="button" aria-label="重設視角" title="重設視角">⟲</button>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="card detail" id="detail"><div class="empty">點地圖上任一個點，這裡會顯示那則推文，以及在原本 1,024 維空間中和它意思最接近的 5 則推文。</div></div>
+    </div>
+    <div class="card side">
+      <h3>主題（點一下只看這個主題）</h3>
+      <div id="topicList"></div>
+    </div>
+  </div>
+
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const M = window.TOPIC_MAP;
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ASPECTS = ["安全防護", "智慧車載", "動力續航", "內裝空間", "售後養護"];
+const TAGS = ["推", "→", "噓"];
+const TAG_VARS = ["--push", "--arrow", "--boo"];
+
+const canvas = $("map"), ctx = canvas.getContext("2d");
+const state = { colorBy: "aspect", topic: null, q: "", sel: null, hover: null, k: 1, tx: 0, ty: 0 };
+let P = [], topicById = {}, colors = {}, W = 0, H = 0, grid = null, matches = null;
+
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function readColors() {
+  colors = { other: cssVar("--other"), faint: cssVar("--faint"), ring: cssVar("--ring"), accent: cssVar("--accent"), text3: cssVar("--text-3"), surface: cssVar("--surface") };
+  ASPECTS.forEach((a, i) => { colors[a] = cssVar(`--a${i + 1}`); });
+  TAG_VARS.forEach((v, i) => { colors["tag" + i] = cssVar(v); });
+}
+function aspectColor(t) { return t.exclude ? colors.faint : colors[t.aspect] || colors.other; }
+function pointColor(p) {
+  const t = topicById[p.topic];
+  if (state.colorBy === "tag") return t.exclude ? colors.faint : colors["tag" + p.tag];
+  return aspectColor(t);
+}
+
+// ---- 座標轉換：資料 0～1 → 畫面像素（含縮放、平移） ----
+// 預設視角框住 99% 的點（少數離群點會讓整團被壓得很小），縮小即可看到離群點；x、y 同比例，不變形
+const PAD = 24;
+let bounds = { x0: 0, x1: 1, y0: 0, y1: 1 };
+function computeBounds() {
+  const q = (a, f) => { const s = a.slice().sort((u, v) => u - v); return s[Math.floor((s.length - 1) * f)]; };
+  const xs = P.map((p) => p.x), ys = P.map((p) => p.y);
+  bounds = { x0: q(xs, 0.005), x1: q(xs, 0.995), y0: q(ys, 0.005), y1: q(ys, 0.995) };
+}
+function base() {
+  const bw = bounds.x1 - bounds.x0, bh = bounds.y1 - bounds.y0;
+  const s = Math.min((W - PAD * 2) / bw, (H - PAD * 2) / bh);
+  return { s, ox: (W - bw * s) / 2 - bounds.x0 * s, oy: (H - bh * s) / 2 + bounds.y1 * s };
+}
+function toScreen(x, y) { const b = base(); return [(b.ox + x * b.s) * state.k + state.tx, (b.oy - y * b.s) * state.k + state.ty]; }
+function toData(sx, sy) { const b = base(); return [((sx - state.tx) / state.k - b.ox) / b.s, (b.oy - (sy - state.ty) / state.k) / b.s]; }
+
+// ---- 空間索引：滑鼠找最近的點 ----
+const G = 120;
+function buildGrid() {
+  grid = Array.from({ length: G * G }, () => []);
+  P.forEach((p, i) => { grid[Math.min(G - 1, Math.floor(p.y * G)) * G + Math.min(G - 1, Math.floor(p.x * G))].push(i); });
+}
+function visible(p) { return (state.topic === null || p.topic === state.topic) && (!matches || matches.has(p.i)); }
+function pick(sx, sy) {
+  const [dx, dy] = toData(sx, sy);
+  const r = 9 / (base().s * state.k), cr = Math.ceil(r * G) + 1;
+  const cx = Math.floor(dx * G), cy = Math.floor(dy * G);
+  let best = null, bd = Infinity;
+  for (let gy = cy - cr; gy <= cy + cr; gy++) for (let gx = cx - cr; gx <= cx + cr; gx++) {
+    if (gx < 0 || gy < 0 || gx >= G || gy >= G) continue;
+    for (const i of grid[gy * G + gx]) {
+      const p = P[i]; if (!visible(p)) continue;
+      const d = (p.x - dx) ** 2 + (p.y - dy) ** 2;
+      if (d < bd && d <= r * r) { bd = d; best = i; }
+    }
+  }
+  return best;
+}
+
+// ---- 繪圖 ----
+function resize() {
+  const dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  const r = Math.max(1.1, Math.min(4, 1.3 * Math.sqrt(state.k)));
+  const focus = state.topic !== null || matches;
+  // 先畫淡化的背景點，再畫重點
+  ctx.globalAlpha = 1;
+  if (focus) {
+    ctx.fillStyle = colors.faint;
+    for (const p of P) if (!visible(p)) { const [x, y] = toScreen(p.x, p.y); if (x > -5 && y > -5 && x < W + 5 && y < H + 5) ctx.fillRect(x - r / 2, y - r / 2, r, r); }
+  }
+  ctx.globalAlpha = focus ? 0.9 : 0.55;
+  const order = state.colorBy === "tag" ? [0, 1, 2].flatMap((tg) => P.filter((p) => p.tag === (tg === 0 ? 1 : tg === 1 ? 0 : 2))) : P;
+  for (const p of order) {
+    if (!visible(p)) continue;
+    const [x, y] = toScreen(p.x, p.y);
+    if (x < -5 || y < -5 || x > W + 5 || y > H + 5) continue;
+    ctx.fillStyle = pointColor(p);
+    // 搜尋結果通常只有幾十則，畫大一點並加外框才找得到
+    const rr = matches ? Math.max(4, r * 1.8) : r * (focus ? 1.2 : 1);
+    ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+    if (matches) ring(x, y, rr, colors.ring, 1);
+  }
+  ctx.globalAlpha = 1;
+  drawLabels();
+  if (state.sel !== null) drawSelection();
+  if (state.hover !== null && state.hover !== state.sel) {
+    const [x, y] = toScreen(P[state.hover].x, P[state.hover].y);
+    ring(x, y, 6, colors.ring, 1.5);
+  }
+}
+function ring(x, y, rad, color, lw) { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke(); }
+function drawSelection() {
+  const p = P[state.sel], [x, y] = toScreen(p.x, p.y);
+  ctx.strokeStyle = colors.accent; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.8;
+  p.nn.forEach((j) => { const [x2, y2] = toScreen(P[j].x, P[j].y); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke(); });
+  ctx.globalAlpha = 1;
+  p.nn.forEach((j) => { const [x2, y2] = toScreen(P[j].x, P[j].y); ctx.fillStyle = colors.accent; ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI * 2); ctx.fill(); ring(x2, y2, 4, colors.surface, 1.5); });
+  ctx.fillStyle = colors.accent; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); ring(x, y, 6, colors.surface, 2); ring(x, y, 9, colors.accent, 1.5);
+}
+// 主題名稱標在各主題點群的中位數位置
+let centers = [];
+function computeCenters() {
+  centers = M.topics.filter((t) => !t.exclude).map((t) => {
+    const pts = P.filter((p) => p.topic === t.id);
+    const med = (a) => { const s = a.slice().sort((u, v) => u - v); return s[Math.floor(s.length / 2)]; };
+    return { t, x: med(pts.map((p) => p.x)), y: med(pts.map((p) => p.y)) };
+  }).sort((a, b) => b.t.size - a.t.size);
+}
+function drawLabels() {
+  const n = state.topic !== null ? 0 : state.k >= 2.5 ? centers.length : state.k >= 1.5 ? 16 : 9;
+  const list = state.topic !== null ? centers.filter((c) => c.t.id === state.topic) : centers.slice(0, n);
+  ctx.font = "600 12px 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const boxes = [];
+  for (const c of list) {
+    let [x, y] = toScreen(c.x, c.y);
+    if (x < 0 || y < 0 || x > W || y > H) continue;
+    const w = ctx.measureText(c.t.name).width + 12, h = 20;
+    x = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, x));  // 靠邊的名稱往內推，不被切掉
+    if (boxes.some((b) => Math.abs(b.x - x) < (b.w + w) / 2 && Math.abs(b.y - y) < h)) continue;
+    boxes.push({ x, y, w });
+    ctx.fillStyle = colors.surface; ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, 6); ctx.fill();
+    ctx.globalAlpha = 1; ctx.fillStyle = cssVar("--text");
+    ctx.fillText(c.t.name, x, y + 1);
+  }
+}
+
+// ---- 側欄、圖例、細節 ----
+function renderLegend() {
+  const items = state.colorBy === "tag"
+    ? TAGS.map((t, i) => [colors["tag" + i], t])
+    : [...ASPECTS.map((a) => [colors[a], a]), [colors.other, "其他（選車、品牌、互動）"]];
+  items.push([colors.faint, "未歸類／純連結"]);
+  $("legend").innerHTML = items.map(([c, l]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join("");
+}
+function renderTopics() {
+  const rows = M.topics.filter((t) => !t.exclude).sort((a, b) => b.size - a.size);
+  $("topicList").innerHTML = rows.map((t) => `<div class="trow${state.topic === t.id ? " on" : ""}" data-id="${t.id}" title="${esc(t.words.join("、"))}"><i style="background:${aspectColor(t)}"></i><span class="nm">${esc(t.name)}</span><span class="sz">${fmt(t.size)}</span></div>`).join("");
+  $("topicList").querySelectorAll(".trow").forEach((el) => el.addEventListener("click", () => {
+    const id = +el.dataset.id;
+    state.topic = state.topic === id ? null : id;
+    renderTopics(); draw();
+  }));
+}
+function topicChip(t) { return `<span class="chip"><i style="background:${aspectColor(t)}"></i>${esc(t.name)}</span>`; }
+function renderDetail() {
+  if (state.sel === null) {
+    $("detail").innerHTML = '<div class="empty">點地圖上任一個點，這裡會顯示那則推文，以及在原本 1,024 維空間中和它意思最接近的 5 則推文。</div>';
+    return;
+  }
+  const p = P[state.sel], t = topicById[p.topic];
+  $("detail").innerHTML = `
+    <div class="mt">選取的推文</div>
+    <div class="main">${esc(p.text)}</div>
+    <div>${topicChip(t)}<span class="chip">${TAGS[p.tag]}</span><span class="chip">${esc(p.month)}</span></div>
+    <div class="mt" style="margin-top:6px">文章：${esc(M.titles[p.title])}</div>
+    <div class="nn">
+      <h3>意思最接近的 5 則（BGE-M3 相似度）</h3>
+      <div class="sub">在 1,024 維空間直接比對算出來的，地圖上用藍線連起來。線很長的代表壓成 2 維時被拉開了。</div>
+      ${p.nn.map((j, k) => { const q = P[j]; return `<div class="nrow" data-j="${j}"><div class="s">${p.sim[k]}%<div class="bar"><b style="width:${p.sim[k]}%"></b></div></div><div class="t">${esc(q.text)}<small>${esc(topicById[q.topic].name)}・${TAGS[q.tag]}・${esc(q.month)}</small></div></div>`; }).join("")}
+    </div>`;
+  $("detail").querySelectorAll(".nrow").forEach((el) => el.addEventListener("click", () => select(+el.dataset.j, true)));
+}
+function select(i, center) {
+  state.sel = i;
+  if (i !== null && state.topic !== null && P[i].topic !== state.topic) { state.topic = null; renderTopics(); }
+  if (i !== null && center) {
+    const [x, y] = toScreen(P[i].x, P[i].y);
+    state.tx += W / 2 - x; state.ty += H / 2 - y;
+  }
+  renderDetail(); draw();
+}
+
+// ---- 縮放與拖曳 ----
+function zoomAt(f, sx, sy) {
+  const nk = Math.max(0.3, Math.min(40, state.k * f)); f = nk / state.k;
+  state.tx = sx - (sx - state.tx) * f; state.ty = sy - (sy - state.ty) * f; state.k = nk; draw();
+}
+canvas.addEventListener("wheel", (e) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+let drag = null;
+canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, tx: state.tx, ty: state.ty, moved: false }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener("pointermove", (e) => {
+  const r = canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; canvas.classList.add("drag"); }
+    if (drag.moved) { state.tx = drag.tx + dx; state.ty = drag.ty + dy; hideTip(); draw(); return; }
+  }
+  const i = pick(sx, sy);
+  if (i !== state.hover) { state.hover = i; draw(); }
+  if (i === null) hideTip(); else showTip(e, P[i]);
+});
+canvas.addEventListener("pointerup", (e) => {
+  canvas.classList.remove("drag");
+  if (drag && !drag.moved) { const r = canvas.getBoundingClientRect(); select(pick(e.clientX - r.left, e.clientY - r.top), false); }
+  drag = null;
+});
+canvas.addEventListener("pointerleave", () => { state.hover = null; hideTip(); draw(); });
+$("zin").onclick = () => zoomAt(1.6, W / 2, H / 2);
+$("zout").onclick = () => zoomAt(1 / 1.6, W / 2, H / 2);
+$("zreset").onclick = () => { state.k = 1; state.tx = 0; state.ty = 0; draw(); };
+
+const tip = $("tip");
+function showTip(e, p) {
+  const t = topicById[p.topic];
+  tip.innerHTML = `<div class="tx">${esc(p.text)}</div><div class="mt">${esc(t.name)}・${TAGS[p.tag]}・${esc(p.month)}</div>`;
+  tip.style.display = "block";
+  const w = tip.offsetWidth, x = e.clientX + 14 + w > innerWidth ? e.clientX - w - 14 : e.clientX + 14;
+  tip.style.left = x + "px"; tip.style.top = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8) + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+
+// ---- 控制項 ----
+$("colorBy").onchange = (e) => { state.colorBy = e.target.value; renderLegend(); draw(); };
+let qTimer = null;
+$("q").addEventListener("input", (e) => {
+  clearTimeout(qTimer);
+  qTimer = setTimeout(() => {
+    const q = e.target.value.trim().toLowerCase();
+    matches = q ? new Set(P.filter((p) => p.text.toLowerCase().includes(q)).map((p) => p.i)) : null;
+    $("qInfo").textContent = matches ? `找到 ${fmt(matches.size)} 則` : "";
+    draw();
+  }, 200);
+});
+$("clearBtn").onclick = () => { state.topic = null; $("q").value = ""; matches = null; $("qInfo").textContent = ""; renderTopics(); select(null); };
+
+$("themeBtn").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+  readColors(); renderLegend(); renderTopics(); draw();
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); renderLegend(); renderTopics(); draw(); });
+
+if (M) {
+  P = M.points.map((r, i) => ({ i, x: r[0], y: r[1], topic: r[2], tag: r[3], month: r[4], title: r[5], text: r[6], nn: r[7], sim: r[8] }));
+  M.topics.forEach((t) => { topicById[t.id] = t; });
+  const tp = M.params.topic_params || {};
+  $("meta").textContent = `${fmt(P.length)} 則推文（${tp.min_len || 6} 字以上），${M.topics.filter((t) => !t.exclude).length} 個主題`;
+  $("s1").textContent = `${M.model} 讀每則推文，輸出一串 ${fmt(M.dims)} 個數字（向量）。意思相近的推文，這串數字也相近，就算用字不同也一樣。`;
+  $("s3").textContent = `在壓縮後的空間裡，推文擠成一團的地方就分成一組（至少 ${tp.min_topic_size || 80} 則才算），再合併成約 ${tp.nr_topics || 30} 個主題。顏色代表各主題對應的方面。`;
+  $("foot").textContent = `地圖參數：UMAP n_neighbors=${M.params.n_neighbors}、min_dist=${M.params.min_dist}、seed=${M.params.seed}。分組沿用 ${M.params.topics}。推文帳號已匿名化。`;
+  readColors(); resize(); computeBounds(); buildGrid(); computeCenters(); renderLegend(); renderTopics(); draw();
+  let lastW = innerWidth;
+  addEventListener("resize", () => { if (innerWidth !== lastW) { lastW = innerWidth; resize(); draw(); } });
+} else {
+  $("detail").innerHTML = '<div class="empty">找不到 topic_map_data.js，請先執行 topic_model/topic_map.py。</div>';
+}
+</script>
+</body>
+</html>
