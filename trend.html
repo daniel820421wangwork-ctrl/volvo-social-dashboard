@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>議題推噓趨勢</title>
+<!--
+  議題推噓趨勢（初版）：各方面／BERTopic 主題在每年、每季、每月的推、→、噓
+  資料來自 trend_data.js（由 03_程式碼/dashboard/build_trend.py 產生，只有統計數字與文章標題）
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface: #fcfcfb; --surface-2: #f0efec; --border: #e2e1dc; --grid: #e9e8e4;
+  --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974;
+  --accent: #2a78d6; --accent-soft: #e3eefb;
+  --push: #2a78d6; --arrow: #c3c1b8; --boo: #e34948; --line: #e34948; --share: #2a78d6;
+  --warn-bg: #fbefd6; --warn: #8a5a00;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+    --accent: #3987e5; --accent-soft: #1d2f45;
+    --push: #3987e5; --arrow: #4a4a46; --boo: #e66767; --line: #e66767; --share: #3987e5;
+    --warn-bg: #3a2c10; --warn: #f2c066;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+  --accent: #3987e5; --accent-soft: #1d2f45;
+  --push: #3987e5; --arrow: #4a4a46; --boo: #e66767; --line: #e66767; --share: #3987e5;
+  --warn-bg: #3a2c10; --warn: #f2c066;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.7 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; }
+a { color: var(--accent); }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.eyebrow { font-size: 13px; color: var(--text-3); }
+h1 { font-size: 26px; line-height: 1.35; margin: 2px 0 6px; }
+.meta { color: var(--text-2); font-size: 13px; }
+.btn { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; }
+.btn:hover { color: var(--text); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+.callout { background: var(--warn-bg); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14px; margin: 14px 0; }
+.callout b { color: var(--warn); }
+.callout ul { margin: 4px 0 0; padding-left: 18px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 16px 0 12px; font-size: 13px; color: var(--text-2); }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--text-2); padding: 4px 12px; border-radius: 7px; cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+.lg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+.lg span { display: inline-flex; align-items: center; gap: 5px; }
+.lg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.lg i.faded { opacity: .35; }
+.lg i.dash { height: 2px; width: 14px; border-radius: 0; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.ch h3 { font-size: 15px; margin: 0; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ch h3 small { color: var(--text-3); font-weight: 400; font-size: 12px; white-space: nowrap; }
+.ch .sub { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--text-3); font-size: 11px; }
+.chart .bk { cursor: pointer; }
+.chart .bk:hover rect.hit, .chart .bk.sel rect.hit { fill: var(--accent-soft); }
+.detail { position: sticky; top: 100px; scroll-margin-top: 100px; }
+.detail .empty { color: var(--text-3); font-size: 14px; }
+.detail h3 { font-size: 15px; margin: 0 0 2px; }
+.detail .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.detail .nums div { background: var(--surface-2); border-radius: 8px; padding: 6px 8px; font-size: 12px; color: var(--text-2); }
+.detail .nums b { display: block; font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+.detail .warn { background: var(--warn-bg); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px; margin: 8px 0; }
+.art { padding: 8px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.art .t { color: var(--text); word-break: break-word; }
+.art .m { color: var(--text-3); font-size: 12px; }
+.art .bar { height: 4px; border-radius: 2px; background: var(--surface-2); margin-top: 4px; overflow: hidden; }
+.art .bar b { display: block; height: 100%; background: var(--accent); }
+.more { text-align: center; margin-top: 12px; }
+.tip { position: fixed; pointer-events: none; z-index: 30; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.12); display: none; min-width: 140px; }
+.tip .t { font-weight: 600; margin-bottom: 2px; }
+.tip .r { display: flex; justify-content: space-between; gap: 12px; color: var(--text-2); }
+.tip .r b { color: var(--text); font-variant-numeric: tabular-nums; }
+footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); padding-top: 12px; }
+@media (max-width: 860px) {
+  .top, .grid { grid-template-columns: minmax(0, 1fr); }
+  .detail { position: static; }
+  header { flex-direction: column; }
+  h1 { font-size: 22px; }
+}
+</style>
+<script src="trend_data.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">階段四｜應用（初版）</div>
+      <h1>議題推噓趨勢</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <button class="btn" id="themeBtn" type="button">切換深淺色</button>
+  </header>
+
+  <div class="callout">
+    <b>解讀前請注意</b>
+    <ul>
+      <li>「噓」不一定是對 Volvo 不滿，常常是噓原 PO、業務或其他網友；反諷也會讓推和噓的字面意思相反。之後會改用模型判斷的實際態度。</li>
+      <li>某段時間的推文可能幾乎都來自同一篇爆文。點一下長條可看這段時間推文最多的文章與佔比。</li>
+      <li>2025 年後推文明顯變少，樣本少的時段（推＋噓不到 30 則）比例會很不穩定，圖上以淡色表示。</li>
+    </ul>
+  </div>
+
+  <div class="controls">
+    <span>議題分法 <span class="seg" id="segGroup"><button data-v="aspect">五大方面</button><button data-v="topic">BERTopic 主題</button></span></span>
+    <span>時間 <span class="seg" id="segGran"><button data-v="year">年</button><button data-v="quarter">季</button><button data-v="month">月</button></span></span>
+    <span>指標 <span class="seg" id="segMetric"><button data-v="count">則數</button><button data-v="boo">噓的比例</button><button data-v="share">討論占比</button></span></span>
+  </div>
+  <div class="lg" id="legend"></div>
+
+  <div class="top">
+    <div class="card ch">
+      <h3 id="allTitle"></h3>
+      <div class="sub" id="metricDesc"></div>
+      <div class="chart" id="chAll"></div>
+    </div>
+    <div class="card detail" id="detail"><div class="empty">點任一張圖的長條（或點），這裡會顯示那段時間的推、→、噓，以及推文最多的文章。</div></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="more" id="more"></div>
+
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const T = window.TREND_DATA;
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const MIN_N = 30;
+const state = { group: "aspect", gran: "year", metric: "count", showAll: false, sel: null };
+try { Object.assign(state, JSON.parse(localStorage.getItem("trendState") || "{}"), { sel: null, showAll: false }); } catch (e) {}
+const save = () => { try { localStorage.setItem("trendState", JSON.stringify({ group: state.group, gran: state.gran, metric: state.metric })); } catch (e) {} };
+
+// ---- 時間區間 ----
+function months() {
+  const out = []; let [y, m] = T.period[0].split("-").map(Number); const [ey, em] = T.period[1].split("-").map(Number);
+  while (y < ey || (y === ey && m <= em)) { out.push(`${y}-${String(m).padStart(2, "0")}`); if (++m > 12) { m = 1; y++; } }
+  return out;
+}
+const MONTHS = months();
+function bucketOf(month) {
+  const y = month.slice(0, 4), m = +month.slice(5);
+  return state.gran === "year" ? y : state.gran === "quarter" ? `${y}Q${Math.ceil(m / 3)}` : month;
+}
+function bucketLabel(k) {
+  if (state.gran === "year") return k;
+  if (state.gran === "quarter") return k.slice(2);
+  return k.slice(2).replace("-", "/");
+}
+function bucketName(k) {
+  if (state.gran === "year") return `${k} 年`;
+  if (state.gran === "quarter") return `${k.slice(0, 4)} 年第 ${k.slice(5)} 季`;
+  return `${k.slice(0, 4)} 年 ${+k.slice(5)} 月`;
+}
+function aggregate(key) {
+  const order = [...new Set(MONTHS.map(bucketOf))];
+  const map = Object.fromEntries(order.map((k) => [k, { key: k, p: 0, a: 0, b: 0, arts: {} }]));
+  const s = T.series[key] || {};
+  for (const [month, rows] of Object.entries(s)) {
+    const bk = map[bucketOf(month)]; if (!bk) continue;
+    for (const [ai, p, a, b] of rows) {
+      bk.p += p; bk.a += a; bk.b += b;
+      const x = bk.arts[ai] || (bk.arts[ai] = [0, 0, 0]); x[0] += p; x[1] += a; x[2] += b;
+    }
+  }
+  return order.map((k) => map[k]);
+}
+const total = (bk) => bk.p + bk.a + bk.b;
+const booRate = (bk) => (bk.p + bk.b ? bk.b / (bk.p + bk.b) : null);
+
+// ---- 圖表 ----
+const tipEl = $("tip");
+function showTip(e, html) { tipEl.innerHTML = html; tipEl.style.display = "block"; const w = tipEl.offsetWidth; tipEl.style.left = (e.clientX + 14 + w > innerWidth ? e.clientX - w - 14 : e.clientX + 14) + "px"; tipEl.style.top = e.clientY + 14 + "px"; }
+function hideTip() { tipEl.style.display = "none"; }
+function niceScale(v) {
+  if (v <= 0) return { max: 1, n: 1 };
+  const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+  const lead = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+  return { max: lead * p, n: lead === 2 ? 4 : 5 };
+}
+function topRounded(x, y, w, h, r) { r = Math.min(r, w / 2, h); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; }
+
+function chart(el, key, name, height, allBuckets) {
+  const bks = aggregate(key);
+  const W = el.clientWidth || 500, H = height, ml = state.metric === "count" ? 40 : 36, mr = 6, mt = 8, mb = 22;
+  const pw = W - ml - mr, ph = H - mt - mb, band = pw / bks.length, bw = Math.max(2, Math.min(26, band * 0.68));
+  const vals = bks.map((bk, i) => state.metric === "count" ? total(bk)
+    : state.metric === "boo" ? booRate(bk)
+    : (total(allBuckets[i]) ? total(bk) / total(allBuckets[i]) : null));
+  const { max, n } = state.metric === "count" ? niceScale(Math.max(0, ...vals))
+    : niceScale(Math.max(0.0001, ...vals.filter((v) => v !== null)));
+  const y = (v) => mt + ph - (v / max) * ph;
+  const fmtAxis = (v) => state.metric === "count" ? fmt(Math.round(v)) : Math.round(v * 100) + "%";
+  let svg = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(name)}">`;
+  for (let i = 0; i <= n; i++) { const v = (max / n) * i, yy = y(v); svg += `<line x1="${ml}" x2="${W - mr}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${ml - 5}" y="${yy + 4}" text-anchor="end">${fmtAxis(v)}</text>`; }
+  const every = Math.max(1, Math.ceil(bks.length / Math.max(1, Math.floor(pw / 40))));
+  const pts = [];
+  bks.forEach((bk, i) => {
+    const x0 = ml + band * i, bx = x0 + (band - bw) / 2, cx = x0 + band / 2;
+    const small = bk.p + bk.b < MIN_N, sel = state.sel && state.sel.key === key && state.sel.bucket === bk.key;
+    svg += `<g class="bk${sel ? " sel" : ""}" data-i="${i}"><rect class="hit" x="${x0}" y="${mt}" width="${band}" height="${ph}" fill="transparent" rx="3"/>`;
+    if (state.metric === "count") {
+      const segs = [[bk.a, "--arrow"], [bk.p, "--push"], [bk.b, "--boo"]].filter(([v]) => v > 0);
+      let acc = 0;
+      segs.forEach(([v, c], k) => {
+        let bottom = y(acc); const top = y(acc + v); if (k > 0) bottom -= 1.5; const h = bottom - top;
+        if (h > 0.4) svg += k === segs.length - 1 ? `<path d="${topRounded(bx, top, bw, h, 3)}" fill="var(${c})"/>` : `<rect x="${bx}" y="${top}" width="${bw}" height="${h}" fill="var(${c})"/>`;
+        acc += v;
+      });
+    } else if (vals[i] !== null) {
+      pts.push([cx, y(vals[i]), small]);
+    }
+    svg += `</g>`;
+    if (i % every === 0) svg += `<text x="${cx}" y="${H - 6}" text-anchor="middle">${esc(bucketLabel(bk.key))}</text>`;
+  });
+  if (pts.length) {
+    const color = state.metric === "boo" ? "var(--line)" : "var(--share)";
+    svg += `<polyline points="${pts.map((p) => p[0] + "," + p[1]).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+    pts.forEach(([x, yy, small]) => { svg += `<circle cx="${x}" cy="${yy}" r="${bks.length > 30 ? 2.5 : 4}" fill="${color}" stroke="var(--surface)" stroke-width="1.5" opacity="${small ? 0.3 : 1}" pointer-events="none"/>`; });
+  }
+  svg += `<line x1="${ml}" x2="${W - mr}" y1="${mt + ph}" y2="${mt + ph}" stroke="var(--text-3)" stroke-opacity=".5"/></svg>`;
+  el.innerHTML = svg;
+  el.querySelectorAll(".bk").forEach((g) => {
+    const bk = bks[+g.dataset.i], r = booRate(bk), sh = total(allBuckets[+g.dataset.i]) ? total(bk) / total(allBuckets[+g.dataset.i]) : 0;
+    g.addEventListener("mousemove", (e) => showTip(e, `<div class="t">${esc(name)}・${esc(bucketName(bk.key))}</div>` +
+      [["推", fmt(bk.p)], ["→", fmt(bk.a)], ["噓", fmt(bk.b)], ["噓的比例", r === null ? "—" : Math.round(r * 100) + "%"], ["討論占比", Math.round(sh * 1000) / 10 + "%"]]
+        .map(([k, v]) => `<div class="r"><span>${k}</span><b>${v}</b></div>`).join("") + (bk.p + bk.b < MIN_N ? `<div class="r"><span>樣本少，比例不穩定</span></div>` : "")));
+    g.addEventListener("mouseleave", hideTip);
+    g.addEventListener("click", () => {
+      state.sel = { key, name, bucket: bk.key }; render(); renderDetail(bk, allBuckets[+g.dataset.i]);
+      // 點下方小圖時，細節面板可能在畫面外，捲過去
+      const r = $("detail").getBoundingClientRect();
+      if (r.bottom < 60 || r.top > innerHeight - 60) $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  return bks;
+}
+
+function renderDetail(bk, allBk) {
+  const arts = Object.entries(bk.arts).map(([ai, [p, a, b]]) => ({ ai: +ai, p, a, b, n: p + a + b })).sort((x, z) => z.n - x.n);
+  const n = total(bk), r = booRate(bk), top = arts[0];
+  const topShare = top && n ? top.n / n : 0;
+  const booTop = arts.slice().sort((x, z) => z.b - x.b)[0];
+  const booShare = booTop && bk.b ? booTop.b / bk.b : 0;
+  $("detail").innerHTML = `
+    <h3>${esc(state.sel.name)}</h3>
+    <div class="meta">${esc(bucketName(bk.key))}・共 ${fmt(n)} 則，來自 ${fmt(arts.length)} 篇文章</div>
+    <div class="nums"><div>推<b>${fmt(bk.p)}</b></div><div>→<b>${fmt(bk.a)}</b></div><div>噓<b>${fmt(bk.b)}</b></div></div>
+    <div class="meta">噓的比例 ${r === null ? "—" : Math.round(r * 100) + "%"}・占全部推文 ${total(allBk) ? Math.round(n / total(allBk) * 1000) / 10 : 0}%</div>
+    ${topShare >= 0.5 ? `<div class="warn">這段時間 ${Math.round(topShare * 100)}% 的推文來自同一篇文章，趨勢主要反映這篇文章。</div>` : ""}
+    ${bk.b >= 10 && booShare >= 0.5 ? `<div class="warn">${Math.round(booShare * 100)}% 的噓集中在「${esc(T.articles[booTop.ai][0])}」。</div>` : ""}
+    ${bk.p + bk.b < MIN_N ? `<div class="warn">推＋噓不到 ${MIN_N} 則，比例參考價值低。</div>` : ""}
+    <div style="font-size:13px;font-weight:600;margin-top:10px">推文最多的文章</div>
+    ${arts.slice(0, 5).map((x) => `<div class="art"><div class="t">${esc(T.articles[x.ai][0])}</div><div class="m">${esc(T.articles[x.ai][1])}・推 ${fmt(x.p)}・→ ${fmt(x.a)}・噓 ${fmt(x.b)}（占 ${Math.round(x.n / n * 100)}%）</div><div class="bar"><b style="width:${Math.round(x.n / n * 100)}%"></b></div></div>`).join("") || '<div class="empty">沒有推文</div>'}`;
+}
+
+function render() {
+  hideTip();
+  document.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => {
+    const k = { segGroup: "group", segGran: "gran", segMetric: "metric" }[seg.id]; b.classList.toggle("on", b.dataset.v === state[k]);
+  }));
+  const desc = { count: "每個時段的推文則數，依推、→、噓堆疊", boo: "噓 ÷（推＋噓），不含「→」；淡色點代表樣本不到 30 則", share: "這個議題的推文占該時段全部推文的比例，可排除整體討論量下降的影響" }[state.metric];
+  $("metricDesc").textContent = desc;
+  $("legend").innerHTML = state.metric === "count"
+    ? `<span><i style="background:var(--push)"></i>推</span><span><i style="background:var(--arrow)"></i>→</span><span><i style="background:var(--boo)"></i>噓</span>`
+    : `<span><i class="dash" style="background:var(${state.metric === "boo" ? "--line" : "--share"})"></i>${state.metric === "boo" ? "噓的比例" : "討論占比"}</span><span><i class="faded" style="background:var(${state.metric === "boo" ? "--line" : "--share"})"></i>樣本不到 ${MIN_N} 則</span>`;
+  const allBuckets = aggregate("all");
+  $("allTitle").innerHTML = state.metric === "share" ? `全部推文<small>占比固定為 100%，改看下方各議題</small>` : `全部推文<small>${fmt(allBuckets.reduce((s, b) => s + total(b), 0))} 則</small>`;
+  chart($("chAll"), "all", "全部推文", 200, allBuckets);
+
+  const groups = T.groups.filter((g) => g.kind === state.group);
+  const shown = state.group === "topic" && !state.showAll ? groups.slice(0, 12) : groups;
+  $("grid").innerHTML = shown.map((g, i) => `<div class="card ch"><h3>${esc(g.name)}<small id="n${i}"></small></h3>${g.kind === "topic" ? `<div class="sub">對應方面：${esc(g.aspect)}</div>` : ""}<div class="chart" id="g${i}"></div></div>`).join("");
+  shown.forEach((g, i) => {
+    const bks = chart($(`g${i}`), g.key, g.name, 150, allBuckets);
+    $(`n${i}`).textContent = `${fmt(bks.reduce((s, b) => s + total(b), 0))} 則`;
+  });
+  $("more").innerHTML = state.group === "topic" && groups.length > 12
+    ? `<button class="btn" id="moreBtn" type="button">${state.showAll ? "只看前 12 大主題" : `顯示全部 ${groups.length} 個主題`}</button>` : "";
+  if ($("moreBtn")) $("moreBtn").onclick = () => { state.showAll = !state.showAll; render(); };
+}
+
+document.querySelectorAll(".seg").forEach((seg) => seg.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const k = { segGroup: "group", segGran: "gran", segMetric: "metric" }[seg.id];
+  state[k] = b.dataset.v; if (k !== "metric") state.sel = null; save(); render();
+  if (!state.sel) $("detail").innerHTML = '<div class="empty">點任一張圖的長條（或點），這裡會顯示那段時間的推、→、噓，以及推文最多的文章。</div>';
+}));
+$("themeBtn").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+if (T) {
+  $("meta").textContent = `研究期間 ${T.period[0]}～${T.period[1]}・依推文時間統計・資料更新 ${T.generated_at}`;
+  $("foot").textContent = `「全部推文」含所有推文；方面與主題只含 ${T.min_len} 字以上、已分群的推文（${T.topics_version}），未歸類與純連結主題不列入。研究期間外的推文已略過（文章不在期間內 ${fmt(T.skipped.article_out_of_period)} 則、推文時間不在期間內 ${fmt(T.skipped.push_out_of_period)} 則）。`;
+  render();
+  let lastW = innerWidth;
+  addEventListener("resize", () => { if (innerWidth !== lastW) { lastW = innerWidth; render(); } });
+} else {
+  $("detail").innerHTML = '<div class="empty">找不到 trend_data.js，請先執行 dashboard/build_trend.py。</div>';
+}
+</script>
+<script src="progress_data.js"></script>
+<script src="nav.js"></script>
+</body>
+</html>

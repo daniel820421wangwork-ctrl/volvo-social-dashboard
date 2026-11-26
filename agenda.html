@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>會議 2 討論重點</title>
+<!--
+  會議 2（2026-11-28）討論重點：進度摘要、請老師決定的問題、建議的研究主線、欄位定義草案
+  內容為手寫；會後把老師的決定寫進 06_會議紀錄/ 與 01_研究規劃/研究決策與執行步驟.md
+-->
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface: #fcfcfb; --surface-2: #f0efec; --border: #e2e1dc; --grid: #e9e8e4;
+  --text: #0b0b0b; --text-2: #52514e; --text-3: #7a7974;
+  --accent: #2a78d6; --accent-soft: #e3eefb;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+    --accent: #3987e5; --accent-soft: #1d2f45; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232322; --border: #2e2e2c; --grid: #2a2a28;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+  --accent: #3987e5; --accent-soft: #1d2f45; --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.75 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; }
+a { color: var(--accent); }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.eyebrow { font-size: 13px; color: var(--text-3); }
+h1 { font-size: 26px; line-height: 1.35; margin: 2px 0 6px; }
+.meta { color: var(--text-2); font-size: 13px; }
+.btn { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin: 18px 0 8px; }
+nav.toc a { color: var(--text-2); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); }
+section { margin-top: 36px; scroll-margin-top: 100px; }
+h2 { font-size: 19px; margin: 0 0 6px; display: flex; align-items: baseline; gap: 10px; }
+h2 .num { color: var(--text-3); font-size: 14px; font-weight: 500; }
+.lead { color: var(--text-2); margin: 0 0 14px; font-size: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+.card + .card { margin-top: 12px; }
+.done-list { margin: 0; padding-left: 20px; font-size: 14px; }
+.done-list li { margin-bottom: 4px; }
+.q { position: relative; padding-left: 50px; }
+.q .no { position: absolute; left: 16px; top: 16px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 600; text-align: center; line-height: 24px; }
+.q h3 { font-size: 16px; margin: 0 0 4px; }
+.q p { margin: 0 0 8px; font-size: 14px; color: var(--text-2); }
+.opts { display: grid; gap: 6px; margin: 8px 0; }
+.opt { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 14px; }
+.opt.rec { border: 2px solid var(--accent); padding: 5px 9px; }
+.opt .tag { font-size: 12px; color: var(--accent); font-weight: 600; margin-left: 6px; }
+.opt small { display: block; color: var(--text-3); font-size: 12px; }
+.ev { font-size: 13px; color: var(--text-3); }
+.rq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rq .card + .card { margin-top: 0; }
+.rq .k { font-size: 12px; color: var(--accent); font-weight: 600; }
+.rq h3 { font-size: 15px; margin: 2px 0 4px; }
+.rq p { font-size: 13px; color: var(--text-2); margin: 0; line-height: 1.6; }
+.flow { font-size: 13px; color: var(--text-3); text-align: center; margin: 8px 0 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-3); font-weight: 500; font-size: 12px; }
+td code { font-size: 12px; background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
+.layer { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.layer:first-child { margin-top: 0; }
+.scroll { overflow-x: auto; }
+.diff { color: #b25d00; }
+.next ol { margin: 0; padding-left: 20px; font-size: 14px; }
+.next li { margin-bottom: 4px; }
+footer { margin-top: 40px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); padding-top: 12px; }
+@media (max-width: 760px) {
+  .rq { grid-template-columns: minmax(0, 1fr); }
+  header { flex-direction: column; }
+  h1 { font-size: 22px; }
+  .q { padding-left: 16px; padding-top: 44px; }
+  .q .no { top: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">指導教授會議 2・2026-11-28</div>
+      <h1>研究主線與趨勢分析方向</h1>
+      <div class="meta">這次要請老師決定 4 個問題，決定後才繼續標註與趨勢分析</div>
+    </div>
+    <button class="btn" id="themeBtn" type="button">切換深淺色</button>
+  </header>
+
+  <nav class="toc" aria-label="本頁目錄">
+    <a href="#since">1. 上次會議後的進度</a>
+    <a href="#decide">2. 請老師決定的問題</a>
+    <a href="#rq">3. 建議的研究主線</a>
+    <a href="#schema">4. 欄位定義草案</a>
+    <a href="#next">5. 接下來兩週</a>
+  </nav>
+
+  <section id="since">
+    <h2><span class="num">1</span>上次會議（10-20）後的進度</h2>
+    <div class="card">
+      <ul class="done-list">
+        <li>依老師意見聚焦「中庸用詞」與「反諷」，整理例句與定義草案（<a href="discussion.html">會議 1 討論頁</a>）</li>
+        <li>AI 試標 100 則候選句，人工逐則檢查：同意 98 則、修改 2 則（<a href="review.html">AI 試標檢查</a>）</li>
+        <li>BERTopic＋BGE-M3 把 43,651 則推文分成 27 個主題，並做成可互動的<a href="topic_map.html">主題地圖</a></li>
+        <li>推文時間正規化：補上年份，修正 35 則被長推文擠壞的時間</li>
+        <li>做出<a href="trend.html">議題推噓趨勢</a>初版：依方面或主題看每年、每季、每月的推、→、噓</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="decide">
+    <h2><span class="num">2</span>請老師決定的問題</h2>
+    <p class="lead">每題標出建議的選項與理由；藍框為建議。</p>
+
+    <div class="card q"><span class="no">1</span>
+      <h3>研究主線是否改成「PTT 建立方法 → 套到 Mobile01 → 趨勢應用」？</h3>
+      <p>原計畫有 4 個研究問題（模型比較、領域適應、跨來源、領先銷量），範圍較廣。上次會議後研究重點已聚焦在中庸與反諷。</p>
+      <div class="opts">
+        <div class="opt rec">改成三段式主線<span class="tag">建議</span><small>先在 PTT 把判斷中庸與反諷的方法固定，再原封不動套到 Mobile01 比較差異，最後用在趨勢分析。各段直接接續，論文較聚焦（見下方第 3 節）。</small></div>
+        <div class="opt">維持原本 4 個研究問題<small>範圍較大，中庸與反諷只是其中一部分。</small></div>
+      </div>
+    </div>
+
+    <div class="card q"><span class="no">2</span>
+      <h3>五大方面要保留嗎？</h3>
+      <p>五大方面（安全防護、智慧車載、動力續航、內裝空間、售後養護）是計畫書原本定的議題。BERTopic 從資料分出的主題，只有約 51% 的推文能對應到五大方面，其餘多是選車比較、品牌評價、中國車背景、社群互動。</p>
+      <div class="opts">
+        <div class="opt rec">五大方面為主軸，BERTopic 主題為輔<span class="tag">建議</span><small>五大方面固定不變，跨平台、跨時間都能比較；BERTopic 用來發現沒預想到的議題（例如「限速 180 政策」「V60 傳動軸問題」這種事件型主題）。</small></div>
+        <div class="opt">改用資料分出的主題<small>更貼近網友實際在聊什麼，但重跑模型主題就會變，跨平台不易對齊。</small></div>
+        <div class="opt">取消議題分類，只看整體情感<small>最單純，但趨勢分析與行銷意涵會變弱。</small></div>
+      </div>
+      <p class="ev">內裝空間的推文只有 106 則，可能需要和其他方面合併。依據：<a href="index.html#topics">首頁「主題分析」</a>、<a href="trend.html">議題趨勢</a></p>
+    </div>
+
+    <div class="card q"><span class="no">3</span>
+      <h3>趨勢分析要用「推噓」還是「模型判斷的實際態度」？</h3>
+      <p>推和噓不一定代表對 Volvo 的態度：噓常常是噓原 PO 或業務，反諷則讓字面和實際意思相反。另外，單篇爆文會主導整條曲線。例如 2021 年「業務糾紛與購車爭議」的噓，有 61% 來自同一篇文章（XC40 業務給錯車）。</p>
+      <div class="opts">
+        <div class="opt rec">兩者並列對照<span class="tag">建議</span><small>同一張圖畫「只看推噓」與「模型判斷、經反諷修正的態度」，兩者的落差就是本研究方法的價值，可作為論文的應用驗證。</small></div>
+        <div class="opt">只用模型判斷的態度<small>較準確，但看不出方法帶來的差異。</small></div>
+        <div class="opt">只用推噓<small>不需要模型，但會被反諷與爆文誤導。</small></div>
+      </div>
+      <p class="ev">時間粒度也請老師決定：2025 年後推文量約只剩一半，逐月看許多議題不到 10 則，建議以「季」為主、大議題可看「月」。</p>
+    </div>
+
+    <div class="card q"><span class="no">4</span>
+      <h3>是否要和 Volvo 月掛牌數（銷量）比較？</h3>
+      <p>原計畫的 RQ4 是「輿情是否領先銷量 1～2 個月」，需要監理統計的月掛牌數，目前還沒查能取得的期間與分類。</p>
+      <div class="opts">
+        <div class="opt rec">保留，但降為延伸分析<span class="tag">建議</span><small>這週先查資料能否取得；能取得就做簡單的相關與 Granger 檢定，不能取得就改為和事件（新車上市、召回新聞）對照。</small></div>
+        <div class="opt">維持為主要研究問題<small>需要較長的資料準備時間，且推文量逐年下降，統計檢定力可能不足。</small></div>
+        <div class="opt">不做<small>專注在方法與趨勢描述。</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="rq">
+    <h2><span class="num">3</span>建議的研究主線</h2>
+    <p class="lead">同一套欄位、標註規則與模型，先在 PTT 固定，再原封不動套到 Mobile01，差異本身就是研究結果。</p>
+    <div class="rq">
+      <div class="card"><div class="k">RQ1｜PTT</div><h3>中庸與反諷判讀</h3><p>字典法、微調 RoBERTa、LLM（Zero／Few-shot／CoT）判讀中庸與反諷的表現；加入上下文、推噓標記、CoT 能改善多少。</p></div>
+      <div class="card"><div class="k">RQ2｜PTT → Mobile01</div><h3>跨平台差異</h3><p>同一方法用在 Mobile01 表現差多少、差在哪裡（沒有推噓、回覆較長、族群不同）；Few-shot、混合訓練、領域適應哪個改善最多。</p></div>
+      <div class="card"><div class="k">RQ3｜應用</div><h3>議題態度趨勢</h3><p>經反諷修正的各議題態度趨勢，與只看推噓的趨勢差在哪裡；是否和事件或銷量相關。</p></div>
+    </div>
+    <p class="flow">RQ1 產出的方法 → RQ2 驗證能否跨平台 → RQ3 展示實際用途</p>
+  </section>
+
+  <section id="schema">
+    <h2><span class="num">4</span>欄位定義草案</h2>
+    <p class="lead">分三層：原始資料只新增不修改；分析單位統一成「一則回應一列」；標註層兩個平台共用同一套規則。<span class="diff">橘字</span>為平台差異。</p>
+    <div class="card scroll">
+      <div class="layer">① 原始層（爬蟲輸出，已統一）</div>
+      <table>
+        <tr><th style="width:22%">欄位</th><th>說明</th><th style="width:22%">PTT</th><th style="width:22%">Mobile01</th></tr>
+        <tr><td><code>source</code>／<code>board</code></td><td>來源與看板</td><td>ptt／car、EV</td><td>mobile01／Volvo 專區</td></tr>
+        <tr><td><code>article_id</code></td><td>文章代號</td><td>M.xxxx.A.xxx</td><td>主題代碼 t</td></tr>
+        <tr><td><code>title</code>／<code>author</code>／<code>post_time</code>／<code>content</code></td><td>標題、作者、發文時間、內文</td><td>有</td><td>內文為 1 樓</td></tr>
+        <tr><td><code>pushes</code></td><td>回應清單（標記、帳號、內容、時間）</td><td>推文：推／→／噓</td><td class="diff">回覆樓層，標記一律為「回覆」，另有樓層</td></tr>
+      </table>
+      <div class="layer">② 分析單位層（一則回應一列，前處理產生）</div>
+      <table>
+        <tr><th style="width:22%">欄位</th><th>說明</th><th style="width:22%">PTT</th><th style="width:22%">Mobile01</th></tr>
+        <tr><td><code>unit_id</code></td><td>文章代號＋回應序號</td><td>有</td><td>有</td></tr>
+        <tr><td><code>text</code></td><td>清理後文字（帳號匿名化、移除連結與引用）</td><td>一則推文，通常一句</td><td class="diff">一樓回覆，常有多句，可能要切句</td></tr>
+        <tr><td><code>time</code></td><td>正規化為 YYYY-MM-DD HH:MM</td><td>補年份（已完成）</td><td>原本就有完整時間</td></tr>
+        <tr><td><code>platform_tag</code></td><td>平台提供的態度標記，只作輔助特徵</td><td>推／→／噓</td><td class="diff">無</td></tr>
+        <tr><td><code>context</code></td><td>判讀反諷需要的上下文：文章標題、內文摘要、前幾則回應</td><td>有</td><td>有（另含被引用的樓層）</td></tr>
+        <tr><td><code>topic</code></td><td>BERTopic 主題；Mobile01 用 PTT 訓練好的模型分類，不重新分群</td><td>有</td><td>沿用 PTT 主題</td></tr>
+      </table>
+      <div class="layer">③ 標註層（兩平台共用，見 AI 試標的格式）</div>
+      <table>
+        <tr><th style="width:22%">欄位</th><th>可能的值</th></tr>
+        <tr><td><code>type</code></td><td>反諷、中庸、正面、負面、無評價</td></tr>
+        <tr><td><code>attitude</code></td><td>實際態度：正面、負面、中立（反諷依實際意思判斷）</td></tr>
+        <tr><td><code>target</code></td><td>Volvo、其他車廠、網友／人、無特定</td></tr>
+        <tr><td><code>aspect</code></td><td>五大方面、其他、無（依第 2 題的決定調整）</td></tr>
+        <tr><td><code>confidence</code></td><td>高、中、低</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="next">
+    <h2><span class="num">5</span>接下來兩週（依老師決定調整）</h2>
+    <div class="card next">
+      <ol>
+        <li>依決定改寫研究問題，更新研究計畫</li>
+        <li>查監理統計月掛牌數能取得的期間與分類</li>
+        <li>開始正式爬取 Mobile01（背景執行，依年份分批）</li>
+        <li>依欄位定義寫前處理程式，產生 PTT 的分析單位資料</li>
+        <li>寫 Codebook 第一版，準備雙人盲標測試集</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>會後請把老師的決定記錄到 06_會議紀錄/，並同步更新 01_研究規劃/研究決策與執行步驟.md。</footer>
+</div>
+<script>
+document.getElementById("themeBtn").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<script src="progress_data.js"></script>
+<script src="nav.js"></script>
+</body>
+</html>
